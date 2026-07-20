@@ -1,0 +1,81 @@
+# Non-secret configuration for backend (ARCHITECTURE.md §7).
+# Everything secret (JWT signing key, DB credentials, Google client ID) lives
+# in the ogtr-secrets Secret — see secrets-template.yaml.
+#
+# CHANGE the three domain values (SHORT_DOMAIN / APP_URL /
+# ACCESS_CONTROL_ALLOW_ORIGIN) to your deployment's domains — the placeholders
+# match ingress.yaml (links.example.com / app.example.com).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ogtr-config
+  namespace: ogtr
+data:
+  APP_NAME: "ogtr-server"
+  LOG_LEVEL: "INFO"
+
+  # In-container ports (gofr defaults; local dev uses 5810/5811 instead).
+  HTTP_PORT: "8000"
+  METRICS_PORT: "2121"
+
+  # MySQL — host/user/password come from the Secret; the rest is not secret.
+  DB_DIALECT: "mysql"
+  DB_PORT: "3306"
+  DB_NAME: "ogtr"
+
+  # Short-link generation + already-short detection. CHANGE to your domain.
+  SHORT_DOMAIN: "links.example.com"
+  SHORT_SCHEME: "https"
+
+  # SPA origin — OAuth redirect + CORS. CHANGE to your app domain. Without
+  # ACCESS_CONTROL_ALLOW_ORIGIN gofr would default the CORS header to "*".
+  APP_URL: "https://app.example.com"
+  ACCESS_CONTROL_ALLOW_ORIGIN: "https://app.example.com"
+
+  # Enabled sign-in methods (comma-separated: google, dev). NEVER add "dev"
+  # here — the dev provider lets anyone sign in as any identity with no
+  # credential check. It exists only for local evaluation.
+  AUTH_PROVIDERS: "google"
+
+  # Session token lifetimes (Go durations; empty = defaults 15m / 720h).
+  ACCESS_TOKEN_TTL: "15m"
+  REFRESH_TOKEN_TTL: "720h"
+
+  # utm_source stamped on direct-traffic clicks. Empty defaults to
+  # SHORT_DOMAIN; set to override with a brand name.
+  UTM_SELF_SOURCE: ""
+
+  # Bare-domain bounce: GET / on the short domain 302s here. CHANGE to your
+  # website (or leave empty to keep the bare domain a 404).
+  WEBSITE_URL: "https://www.example.com"
+
+  # --- Abuse protection (DEPLOYMENT.md §6) ---
+
+  # Contact shown on flagged-destination errors, the disabled-link 410 page
+  # and the /{code}+ preview page. CHANGE to a mailbox you read.
+  ABUSE_CONTACT: "abuse@example.com"
+
+  # Comma-separated plaintext blocklist feeds (host-or-URL per line).
+  # Recommended: URLhaus + OpenPhish + CoinBlocker (see DEPLOYMENT.md §6).
+  BLOCKLIST_FEED_URLS: "https://urlhaus.abuse.ch/downloads/text_online/,https://openphish.com/feed.txt,https://zerodot1.gitlab.io/CoinBlockerLists/hosts_browser"
+  BLOCKLIST_REFRESH_INTERVAL: "6h"
+
+  # Extra reserved short-code words + extra shortener hosts (comma-separated).
+  RESERVED_ALIASES: ""
+  SHORTENER_DOMAINS: ""
+
+  # Destination re-scan of recently clicked links (>=24h runs daily).
+  RESCAN_INTERVAL: "24h"
+
+  # Link creates + destination edits per user/API key per minute.
+  # Per-instance limit — multiply by replica count for the effective rate.
+  LINK_CREATE_RATE: "30"
+
+  # Optional GeoIP (ARCHITECTURE.md §6). Leave EMPTY to run without GeoIP
+  # (clicks record no city, location rules never match, /api/v1/cities → 501).
+  # To enable: mount the MaxMind files at /data/geoip/ (see the commented
+  # volume in server-deployment.yaml) and set:
+  #   GEOIP_DB_PATH: "/data/geoip/GeoLite2-City.mmdb"
+  #   GEOIP_CITIES_CSV: "/data/geoip/GeoLite2-City-Locations-en.csv"
+  GEOIP_DB_PATH: ""
+  GEOIP_CITIES_CSV: ""

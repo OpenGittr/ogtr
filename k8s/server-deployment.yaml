@@ -1,0 +1,127 @@
+# ogtr backend — redirects at /, management API under /api/v1.
+# Served on the SHORT_DOMAIN host (ingress.yaml). Stateless (stateless JWTs,
+# MySQL for all state), so it scales horizontally.
+#
+# Image: no registry is decided yet — build locally and prefix your registry:
+#   docker build --platform linux/amd64 -t <registry>/ogtr-server:<tag> backend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ogtr-server
+  namespace: ogtr
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ogtr-server
+  template:
+    metadata:
+      labels:
+        app: ogtr-server
+      annotations:
+        # Gofr serves Prometheus metrics on the dedicated metrics port.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2121"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: server
+        # CHANGE: prefix with your registry once one is decided.
+        image: ogtr-server:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8000
+        - name: metrics
+          containerPort: 2121
+        # Non-secret config (ports, domains, TTLs, GeoIP paths, ...).
+        envFrom:
+        - configMapRef:
+            name: ogtr-config
+        env:
+        # Gofr's MySQL DSN uses loc=Local — keep the process zone at UTC.
+        - name: TZ
+          value: "UTC"
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: db-host
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: db-user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: db-password
+        - name: JWT_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: jwt-signing-key
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: google-client-id
+        # Optional Web Risk destination-scanning layer (DEPLOYMENT.md §6);
+        # an empty value disables it.
+        - name: WEBRISK_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: webrisk-api-key
+              optional: true
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "10m"
+          limits:
+            # Raise the memory limit to ~256Mi when mounting GeoIP — the
+            # .mmdb (~60MB) and city index are held in memory.
+            memory: "128Mi"
+            cpu: "200m"
+        # Gofr built-in health endpoints (no auth).
+        livenessProbe:
+          httpGet:
+            path: /.well-known/alive
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /.well-known/health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        # OPTIONAL — GeoIP (MaxMind GeoLite2). The app runs fine without it
+        # (no click geo, location rules never match, city autocomplete 501).
+        # To enable: create a PVC (or any volume type) containing
+        # GeoLite2-City.mmdb + GeoLite2-City-Locations-en.csv from the SAME
+        # GeoLite2 release, uncomment the mount + volume below, and set
+        # GEOIP_DB_PATH / GEOIP_CITIES_CSV in configmap.yaml. See
+        # docs/DEPLOYMENT.md ("GeoIP volume") for the full walkthrough.
+        # volumeMounts:
+        # - name: geoip
+        #   mountPath: /data/geoip
+        #   readOnly: true
+      # volumes:
+      # - name: geoip
+      #   persistentVolumeClaim:
+      #     claimName: ogtr-geoip
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ogtr-server
+  namespace: ogtr
+spec:
+  selector:
+    app: ogtr-server
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP

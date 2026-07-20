@@ -1,0 +1,4 @@
+# Keep local-only and licensed material out of the image build context.
+configs/.local.env
+data/
+coverage.out

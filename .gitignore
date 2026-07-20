@@ -1,0 +1,21 @@
+# Local-only config (real values live here; ship .sample.env / .env.sample instead)
+.local.env
+.env.local
+
+# Maintainer-local agent instructions (never committed)
+CLAUDE.md
+CLAUDE.local.md
+
+# OS / editor
+.DS_Store
+.idea/
+
+# Node
+node_modules/
+
+# Build output
+dist/
+
+# Licensed MaxMind GeoIP data (local dev only — never committed; see
+# docs/ARCHITECTURE.md §6)
+backend/data/

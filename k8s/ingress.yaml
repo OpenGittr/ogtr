@@ -1,0 +1,48 @@
+# ogtr ingress — one Ingress, two hosts (ARCHITECTURE.md §1):
+#
+#   SHORT_DOMAIN   links.example.com      → backend  (redirects at /, API at /api/v1)
+#   APP_DOMAIN     app.example.com  → frontend    (dashboard SPA)
+#
+# CHANGE the placeholder domains below to your own, and keep them in sync
+# with configmap.yaml (SHORT_DOMAIN / APP_URL / ACCESS_CONTROL_ALLOW_ORIGIN)
+# and the VITE_API_URL baked into the app image.
+#
+# Ingress-controller-agnostic apart from `ingressClassName` — adjust class
+# and TLS annotations to your cluster. The cert-manager annotation is an
+# example; any TLS provisioning works (the manifests only expect the
+# ogtr-tls secret to exist or be created by your issuer).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ogtr-ingress
+  namespace: ogtr
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # example — adjust/remove
+spec:
+  ingressClassName: nginx  # CHANGE to your ingress class if different
+  tls:
+  - hosts:
+    - links.example.com
+    - app.example.com
+    secretName: ogtr-tls
+  rules:
+  - host: links.example.com            # CHANGE — SHORT_DOMAIN
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ogtr-server
+            port:
+              number: 80
+  - host: app.example.com        # CHANGE — APP_DOMAIN
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ogtr-app
+            port:
+              number: 80

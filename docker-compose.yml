@@ -1,0 +1,21 @@
+# Local development dependencies for ogtr.
+# MySQL published on host port 5830 (project port block 5800-5899, see docs/LOCAL_DEVELOPMENT.md).
+services:
+  mysql:
+    image: mysql:8
+    container_name: ogtr-mysql
+    ports:
+      - "5830:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ogtr-local
+      MYSQL_DATABASE: ogtr
+    volumes:
+      - ogtr-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pogtr-local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  ogtr-mysql-data:
