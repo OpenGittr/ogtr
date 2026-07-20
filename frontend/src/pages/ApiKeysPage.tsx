@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
+import { limitNoticeAction } from "../ext";
 import type { ApiKey, CreatedApiKey } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
 import {
@@ -233,7 +234,7 @@ export default function ApiKeysPage() {
           </form>
 
           {createError && <ErrorBanner message={createError} />}
-          {limitNotice && <NoticeBanner message={limitNotice} />}
+          {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
           {createdKey && (
             <NewKeyPanel created={createdKey} onDismiss={() => setCreatedKey(null)} />
           )}

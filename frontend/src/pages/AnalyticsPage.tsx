@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
+import { limitNoticeAction } from "../ext";
 import type { UTMAnalysis, UTMCount } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
 import {
@@ -140,7 +141,7 @@ export default function AnalyticsPage() {
       </div>
 
       {error && <ErrorBanner message={error} onRetry={() => void load()} />}
-      {limitNotice && <NoticeBanner message={limitNotice} />}
+      {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
 
       {allEmpty && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white">

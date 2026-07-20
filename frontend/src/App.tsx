@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "./auth/AuthContext";
 import AppShell from "./components/AppShell";
 import { FullPageSpinner } from "./components/ui";
+import { extraRoutes } from "./ext";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import ApiKeysPage from "./pages/ApiKeysPage";
 import DomainsPage from "./pages/DomainsPage";
@@ -68,6 +69,9 @@ export default function App() {
         <Route path="links/:id" element={<LinkDetailPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="api-keys" element={<ApiKeysPage />} />
+        {extraRoutes.map((route) => (
+          <Route key={route.path} path={route.path} element={<route.element />} />
+        ))}
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

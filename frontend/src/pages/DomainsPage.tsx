@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth/AuthContext";
 import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
+import { limitNoticeAction } from "../ext";
 import type { OrgDomain } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
 import {
@@ -287,7 +288,7 @@ export default function DomainsPage() {
           )}
 
           {addError && <ErrorBanner message={addError} />}
-          {limitNotice && <NoticeBanner message={limitNotice} />}
+          {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
           {addNotice && (
             <p
               className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"

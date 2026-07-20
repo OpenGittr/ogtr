@@ -8,6 +8,7 @@ import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBanner, NoticeBanner, Spinner } from "../components/ui";
 import { ApiError, LIMIT_REACHED } from "../lib/api";
+import { limitNoticeAction } from "../ext";
 import { usePageTitle } from "../lib/usePageTitle";
 
 export default function OnboardingPage() {
@@ -89,7 +90,7 @@ export default function OnboardingPage() {
             </div>
 
             {error && <ErrorBanner message={error} />}
-            {limitNotice && <NoticeBanner message={limitNotice} />}
+            {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
 
             <button
               type="submit"

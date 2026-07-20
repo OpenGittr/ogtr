@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
+import { limitNoticeAction } from "../ext";
 import type { DayCount, DayDimCount, DimCount, LinkStatsReport, ShortURL } from "../lib/types";
 import { formatDateTime } from "./LinkList";
 import { ColumnChart, HBarList, StatTile, shortDate } from "./charts";
@@ -227,7 +228,7 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
       </div>
 
       {error && <ErrorBanner message={error} />}
-      {limitNotice && <NoticeBanner message={limitNotice} />}
+      {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
 
       {loading ? (
         <div className="flex justify-center rounded-xl border border-slate-200 bg-white py-16 shadow-sm">

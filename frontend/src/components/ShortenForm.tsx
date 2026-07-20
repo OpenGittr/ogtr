@@ -8,6 +8,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
+import { limitNoticeAction } from "../ext";
 import type { LinkType, ShortURL } from "../lib/types";
 import { LinkActionOverlays, QRPanel, type LinkAction } from "./LinkActions";
 import { CopyButton, ErrorBanner, NoticeBanner, Spinner, secondaryButtonClass } from "./ui";
@@ -192,7 +193,7 @@ export default function ShortenForm({
       )}
 
       {error && <ErrorBanner message={error} />}
-      {limitNotice && <NoticeBanner message={limitNotice} />}
+      {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
 
       {created && (
         <div

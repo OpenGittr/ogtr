@@ -4,6 +4,7 @@
 // link-management flows.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 import type { Role } from "../lib/types";
 
@@ -83,14 +84,30 @@ export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: (
  * Informational notice, visually distinct from ErrorBanner — used when the
  * server declines an action with an explanatory message meant to be shown
  * verbatim (e.g. a LIMIT_REACHED response from the deployment's policy).
+ * An optional trailing action renders as an inline link (deployments point
+ * it at a page explaining their limits — see src/ext).
  */
-export function NoticeBanner({ message }: { message: string }) {
+export function NoticeBanner({
+  message,
+  action,
+}: {
+  message: string;
+  action?: { to: string; label: string } | null;
+}) {
   return (
     <div
       className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
       role="status"
     >
       {message}
+      {action && (
+        <>
+          {" "}
+          <Link to={action.to} className="font-semibold underline hover:text-amber-900">
+            {action.label}
+          </Link>
+        </>
+      )}
     </div>
   );
 }

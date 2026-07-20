@@ -679,3 +679,8 @@ A composing deployment lives in its own module with its own `main.go` importing
 never learns what was composed. Deployment-registered routes are ordinary gofr handlers:
 they see the same auth middleware (claims on the context), the same error conventions
 (`apierrors`, `StatusCode()`), and the shared `ctx.SQL`.
+
+The SPA carries the equivalent seam in `frontend/src/ext/index.tsx`, a stub module a
+deployment may overwrite at image build time to register extra routes, sidebar navigation
+items, and an optional trailing link on LIMIT_REACHED notices. The stock build ships the
+empty stub, so the app behaves as if the seam did not exist.

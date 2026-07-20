@@ -5,6 +5,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+import { extraNavItems } from "../ext";
 import OrgSwitcher from "./OrgSwitcher";
 import { InitialAvatar } from "./ui";
 
@@ -21,6 +22,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/members", label: "Members" },
   { to: "/domains", label: "Domains" },
   { to: "/api-keys", label: "API keys" },
+  // Deployment-registered items (src/ext) render after the built-ins.
+  ...extraNavItems.map(({ to, label }) => ({ to, label })),
 ];
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
