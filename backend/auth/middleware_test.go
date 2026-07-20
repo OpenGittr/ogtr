@@ -174,3 +174,51 @@ func TestMiddleware(t *testing.T) {
 		})
 	}
 }
+
+func TestMiddleware_ExtraExemptPaths(t *testing.T) {
+	issuer := testIssuer()
+
+	tests := []struct {
+		desc       string
+		method     string
+		path       string
+		exempt     []string
+		wantStatus int
+	}{
+		{
+			desc: "listed path passes without a token", method: http.MethodPost,
+			path: "/api/v1/inbound/callback", exempt: []string{"/api/v1/inbound/callback"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			desc: "listed path is method-agnostic", method: http.MethodGet,
+			path: "/api/v1/inbound/callback", exempt: []string{"/api/v1/inbound/callback"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			desc: "unlisted sibling path still requires auth", method: http.MethodPost,
+			path: "/api/v1/inbound/other", exempt: []string{"/api/v1/inbound/callback"},
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			desc: "no extra paths keeps the stock behavior", method: http.MethodPost,
+			path: "/api/v1/inbound/callback",
+			wantStatus: http.StatusUnauthorized,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+
+			req := httptest.NewRequest(tc.method, tc.path, http.NoBody)
+			rec := httptest.NewRecorder()
+
+			Middleware(issuer, tc.exempt...)(next).ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.wantStatus, rec.Code)
+		})
+	}
+}

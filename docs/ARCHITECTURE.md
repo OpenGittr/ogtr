@@ -657,3 +657,25 @@ resource creation and analytics viewing:
   never couples the two. `EventsThisMonth` is served by the clicks `(org_id, ts)` index
   (added as the first incremental migration; the `(org_id, link_id, ts)` analytics index
   cannot serve an org-wide time range).
+
+### Deployment composition
+
+The whole application assembly lives in **`backend/app`**: `app.Run(opts...)` builds
+configuration, migrations, stores, services, handlers, routes and cron jobs, then serves.
+The stock binary is just `main.go` → `app.Run()` — with no options, behavior is identical
+to the pre-package single-file main. A deployment composes the same core with its own
+additions through functional options:
+
+| Option | Effect |
+|---|---|
+| `app.WithPolicy(limits.Policy)` | substitutes the deployment's policy for `limits.Unlimited{}` (see "Extension seam: LimitsPolicy" above) |
+| `app.WithMigrations(map[int64]migration.Migrate)` | extra migrations merged after the core's (same `date +%Y%m%d%H%M%S` keys; a key collision refuses to start). All migrations share the one `gofr_migrations` table |
+| `app.WithRoutes(func(*gofr.App, *app.Services))` | registers extra HTTP routes after every core route; receives `app.Services` — a deliberately tight surface (currently `Usage usage.Reader` and `Members app.RoleReader`) that grows additively when a real route needs more |
+| `app.WithProviders(map[string]auth.IdentityProvider)` | adds identity providers on top of `AUTH_PROVIDERS` (additive; added names are login-enabled; a name collision replaces the built-in) |
+| `app.WithAuthExemptPaths(paths...)` | exempts additional exact request paths (any method) from the auth middleware, for deployment endpoints that carry their own authentication (e.g. signature-verified callback receivers) |
+
+A composing deployment lives in its own module with its own `main.go` importing
+`github.com/opengittr/ogtr/backend` and calling `app.Run` with options; the core repo
+never learns what was composed. Deployment-registered routes are ordinary gofr handlers:
+they see the same auth middleware (claims on the context), the same error conventions
+(`apierrors`, `StatusCode()`), and the shared `ctx.SQL`.

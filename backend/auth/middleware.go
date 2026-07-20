@@ -22,6 +22,11 @@ const APIKeyHeader = "X-API-Key"
 // outside /api/ — Gofr's well-known health/alive/openapi paths, favicon, and
 // the public GET /{code} redirect. Metrics live on a separate port.
 //
+// extraExempt lists additional exact request paths (any method) a
+// deployment exempts from auth — endpoints it registers itself that carry
+// their own authentication (e.g. signature-verified callback receivers).
+// Empty for the stock assembly.
+//
 // X-API-Key: on POST /api/v1/links and GET /api/v1/resolve ONLY, a present
 // X-API-Key header replaces JWT auth — the raw key is forwarded on the
 // context (APIKeyFromContext) and the handler authenticates it against the
@@ -33,7 +38,12 @@ const APIKeyHeader = "X-API-Key"
 // On success the validated access-token claims are placed on the request
 // context (ClaimsFromContext). Org-required endpoints additionally call
 // RequireOrg — an org-less token authenticates but cannot touch org resources.
-func Middleware(tokens *TokenIssuer) gofrHTTP.Middleware {
+func Middleware(tokens *TokenIssuer, extraExempt ...string) gofrHTTP.Middleware {
+	exempt := make(map[string]bool, len(extraExempt))
+	for _, path := range extraExempt {
+		exempt[path] = true
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if rawKey := r.Header.Get(APIKeyHeader); rawKey != "" && isKeyAuthRoute(r) {
@@ -42,7 +52,7 @@ func Middleware(tokens *TokenIssuer) gofrHTTP.Middleware {
 				return
 			}
 
-			if isAuthExempt(r) {
+			if isAuthExempt(r) || exempt[r.URL.Path] {
 				next.ServeHTTP(w, r)
 
 				return
