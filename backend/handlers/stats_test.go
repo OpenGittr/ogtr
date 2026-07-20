@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/opengittr/ogtr/backend/apierrors"
 	"github.com/opengittr/ogtr/backend/auth"
 	"github.com/opengittr/ogtr/backend/models"
 )
@@ -128,6 +129,32 @@ func TestStatsHandler_LinkReport_UntypedNilOnError(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Nil(t, got)
+}
+
+// An analytics-window gate (403 LIMIT_REACHED from the service) must reach
+// Gofr untouched — status, machine-readable code and message — with an
+// UNTYPED nil body (a typed nil would make Gofr respond 206). This is what
+// the SPA turns into the notice banner in place of the charts.
+func TestStatsHandler_LinkReport_LimitReached(t *testing.T) {
+	h, svc := newStatsHandler(t)
+	denial := apierrors.LimitReached("events over the viewable bound for this org")
+
+	svc.EXPECT().LinkReport(gomock.Any(), int64(3), int64(7), int64(9), "", "", false).
+		Return(nil, denial)
+
+	ctx := newTestCtx(t, http.MethodGet, "/api/v1/links/9/stats", "", orgOwnerClaims(),
+		map[string]string{"id": "9"})
+
+	got, err := h.LinkReport(ctx)
+
+	assert.True(t, got == nil, "handler must return an untyped nil on error")
+	require.Error(t, err)
+
+	var apiErr apierrors.Error
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode())
+	assert.Equal(t, map[string]any{"code": apierrors.CodeLimitReached}, apiErr.Response())
+	assert.Equal(t, "events over the viewable bound for this org", apiErr.Error())
 }
 
 func TestStatsHandler_UniqueClicks(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 	"gofr.dev/pkg/gofr"
 	"gofr.dev/pkg/gofr/container"
 
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -43,6 +44,13 @@ func newLinkServiceWithMembers(t *testing.T) (*LinkService, *MockLinkStore, *Moc
 func newLinkServiceWithDomains(t *testing.T) (*LinkService, *MockLinkStore, *MockMemberStore, *MockDomainStore, *gofr.Context) {
 	t.Helper()
 
+	return newLinkServiceWithPolicy(t, limits.Unlimited{})
+}
+
+func newLinkServiceWithPolicy(t *testing.T, policy limits.Policy) (*LinkService,
+	*MockLinkStore, *MockMemberStore, *MockDomainStore, *gofr.Context) {
+	t.Helper()
+
 	ctrl := gomock.NewController(t)
 	links := NewMockLinkStore(ctrl)
 	members := NewMockMemberStore(ctrl)
@@ -53,7 +61,7 @@ func newLinkServiceWithDomains(t *testing.T) (*LinkService, *MockLinkStore, *Moc
 
 	// nil scanner = allow every destination; scanning behavior has its own
 	// tests with a mock URLScanner.
-	return NewLinkService(links, members, domains, nil, nil, "http", "sho.rt", ""), links, members, domains, ctx
+	return NewLinkService(links, members, domains, nil, policy, nil, "http", "sho.rt", ""), links, members, domains, ctx
 }
 
 func publicLink(id int64, code, dest string) *models.Link {

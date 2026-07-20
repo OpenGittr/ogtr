@@ -19,6 +19,7 @@ import (
 	"github.com/opengittr/ogtr/backend/scanner"
 	"github.com/opengittr/ogtr/backend/services"
 	"github.com/opengittr/ogtr/backend/stores"
+	"github.com/opengittr/ogtr/backend/usage"
 	"github.com/opengittr/ogtr/backend/visitor"
 )
 
@@ -103,24 +104,31 @@ func main() {
 	apiKeyStore := stores.NewAPIKeyStore()
 	domainStore := stores.NewDomainStore()
 	reportStore := stores.NewAbuseReportStore()
+	usageStore := usage.NewStore()
 
-	authSvc := services.NewAuthService(providers, tokens, userStore, orgStore, memberStore, inviteStore)
-	// limits.Unlimited is the default resource policy: every check allows.
-	// A deployment may substitute its own limits.Policy here (ARCHITECTURE.md
-	// §8 "Extension seam: LimitsPolicy").
-	orgSvc := services.NewOrgService(orgStore, memberStore, inviteStore, userStore, limits.Unlimited{})
-	linkSvc := services.NewLinkService(linkStore, memberStore, domainStore, urlScanner, reserved,
+	// limits.Unlimited is the default resource policy: every check allows and
+	// the analytics window is unbounded. A deployment may substitute its own
+	// limits.Policy here (ARCHITECTURE.md §8 "Extension seam: LimitsPolicy");
+	// an implementation that bounds by current usage is typically constructed
+	// with usageStore (usage.Reader). Note what is NOT wired to the policy:
+	// resolveSvc — resolution and click recording can never be policy-bound
+	// (FEATURES.md INV-7).
+	var policy limits.Policy = limits.Unlimited{}
+
+	authSvc := services.NewAuthService(providers, tokens, userStore, orgStore, memberStore, inviteStore, policy)
+	orgSvc := services.NewOrgService(orgStore, memberStore, inviteStore, userStore, policy)
+	linkSvc := services.NewLinkService(linkStore, memberStore, domainStore, urlScanner, policy, reserved,
 		shortScheme, shortDomain, abuseContact)
 	ruleSvc := services.NewRuleService(ruleStore, linkStore)
 	resolveSvc := services.NewResolveService(linkStore, clickStore, ruleStore, domainStore, locator,
 		guessThrottle, app.Config.GetOrDefault("UTM_SELF_SOURCE", shortDomain), shortDomain, abuseContact)
 	reportSvc := services.NewReportService(linkStore, reportStore, reportLimiter)
 	rescanSvc := services.NewRescanService(linkStore, urlScanner)
-	statsSvc := services.NewStatsService(statsStore, linkStore, ruleStore)
-	apiKeySvc := services.NewAPIKeyService(apiKeyStore)
+	statsSvc := services.NewStatsService(statsStore, linkStore, ruleStore, policy, usageStore)
+	apiKeySvc := services.NewAPIKeyService(apiKeyStore, policy)
 	// net.DefaultResolver is the production DNSResolver; tests substitute a
 	// mock behind the same interface — the verification code is identical.
-	domainSvc := services.NewDomainService(domainStore, memberStore, net.DefaultResolver, shortDomain)
+	domainSvc := services.NewDomainService(domainStore, memberStore, net.DefaultResolver, policy, shortDomain)
 
 	authH := handlers.NewAuthHandler(authSvc, providerNames, app.Config.Get("GOOGLE_CLIENT_ID"))
 	orgH := handlers.NewOrgHandler(orgSvc, authSvc)

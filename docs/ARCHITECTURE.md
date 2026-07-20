@@ -96,7 +96,9 @@ Key schema decisions:
   function of the short URL, so storing rendered PNGs would be pure bloat.
 - **Deep-link config is a column on `links`, owner-written only** — never writable from the
   resolution path (INV-3).
-- **`clicks` is written for every resolution** (INV-4), indexed on `(org_id, link_id, ts)`.
+- **`clicks` is written for every resolution** (INV-4), indexed on `(org_id, link_id, ts)`
+  for per-link analytics and `(org_id, ts)` for org-wide usage metering (§8 "Extension seam:
+  LimitsPolicy" — current-month event counts).
 
 ## 3. Short-code rules
 
@@ -532,8 +534,11 @@ LINK_CREATE_RATE                  creates+edits per principal per minute (defaul
 - Gofr-style errors only; custom error types must implement `StatusCode()`. An error may
   additionally implement Gofr's `Response() map[string]any` to add machine-readable fields
   (e.g. `code`) to the error envelope.
-- Migrations: Gofr migrations, one file for the initial schema; timestamp prefix from
-  `date +%Y%m%d%H%M%S`.
+- Migrations: Gofr migrations, timestamp prefix from `date +%Y%m%d%H%M%S`. Production
+  databases exist, so every schema change lands as a NEW timestamped migration file (the
+  pre-release edit-the-initial-file convention is retired); additive changes are folded into
+  the initial schema too so a fresh install builds from one file, with the incremental file
+  guarded to skip what already exists.
 - Tests: handler/service/store layering with interfaces + gomock throughout.
 
 ### URL scanning & abuse defenses
@@ -591,21 +596,64 @@ implementation decisions:
 ### Extension seam: LimitsPolicy
 
 `backend/limits` defines the one extension point through which a deployment can bound
-resource creation:
+resource creation and analytics viewing:
 
-- **`limits.Policy`** — a small interface consulted before resource-creating actions; today it
-  has a single check, `CanCreateOrg(ctx, userID)`. `main.go` wires **`limits.Unlimited{}`**,
-  the default policy whose every check allows, so a stock deployment behaves as if the seam
-  did not exist. A deployment may substitute its own implementation at the `NewOrgService`
-  call in `main.go`.
-- **Forward compatibility** (gRPC-style): the interface grows additively (future checks may
-  cover link creation, custom domains, seats, analytics windows). Implementations must embed
-  **`limits.UnimplementedPolicy`** — enforced by an unexported interface method — and override
-  only the checks they enforce. Un-overridden checks fall through to the base, which always
-  allows, so an implementation written against today's interface keeps compiling and keeps
-  its behavior when new checks are added.
+- **`limits.Policy`** — an interface consulted before resource-creating actions and by the
+  stats service. `main.go` wires **`limits.Unlimited{}`**, the default policy whose every
+  check allows (and whose analytics window is unbounded), so a stock deployment behaves as if
+  the seam did not exist. A deployment may substitute its own implementation at the single
+  `policy` variable in `main.go` — every service that consults the seam receives the same
+  instance.
+- **Checks (axes)** and where each is enforced:
+
+  | Check | Enforced at |
+  |---|---|
+  | `CanCreateOrg(ctx, userID)` | `POST /api/v1/orgs` (OrgService.Create) |
+  | `CanCreateLink(ctx, orgID, userID)` | link creation only — the shared `shorten` path behind both the JWT and API-key routes (`userID` is 0 on the key path). Never on edits (alias / deep link / destination), and not on the already-short echo, which creates nothing |
+  | `CanAddDomain(ctx, orgID)` | custom-domain registration (DomainService.Create) |
+  | `CanAddMember(ctx, orgID)` | invite creation (OrgService.CreateInvite) AND the single membership-creating choke point on the login path (AuthService.joinAsMember, used by both invite acceptance and auto-join) |
+  | `CanCreateAPIKey(ctx, orgID)` | API-key creation (APIKeyService.Create) |
+  | `AnalyticsWindow(ctx, orgID) (Window, error)` | every stats entry point (see Window semantics below) |
+
+  Each check runs after input validation and before any store access, so a denial writes
+  nothing.
+- **Forward compatibility** (gRPC-style): the interface grows additively. Implementations
+  must embed **`limits.UnimplementedPolicy`** — enforced by an unexported interface method —
+  and override only the checks they enforce. Un-overridden checks fall through to the base,
+  which always allows, so an implementation written against today's interface keeps compiling
+  and keeps its behavior when new checks are added.
 - **Denial contract**: a check blocks an action by returning `limits.Deny("reason")`. The API
   responds `403` with `{"error": {"code": "LIMIT_REACHED", "message": "<reason>"}}` — the
   policy's message is passed through verbatim and the SPA shows it as a notice, so the core
   never hardcodes denial wording. Any other error from a check is an internal policy failure
   (500), not a denial.
+- **Login-path exception**: on the login path a `CanAddMember` denial must never fail the
+  login — the join is skipped (logged), a pending invite stays PENDING so it converts on a
+  later login once the policy allows, and an auto-join candidate simply stays org-less.
+- **`limits.Window` semantics** (analytics viewing bounds; the zero value is unbounded):
+  - `ViewableEvents` (0 = unbounded) caps VIEWING, not recording: when the org's
+    current-calendar-month event count (`usage.EventsThisMonth`, UTC months) *exceeds* the
+    bound, every stats endpoint (per-link report, unique-clicks, tags, UTM analysis) answers
+    `403 LIMIT_REACHED` with the window's `Message` (or `limits.DefaultWindowMessage` when
+    unset). The SPA renders the message as a notice in place of the charts.
+  - `Retention` (0 = unbounded) clamps how far back stats queries look: the per-link report's
+    from-date is clamped to now−Retention (a range fully outside the window yields an empty
+    report, not an error), and the org-level queries carry the cutoff as an always-bound
+    `ts >= since` predicate (`1970-01-01` when unbounded, so the query shape is constant).
+  - Both bound viewing only. Older events stay stored and clicks keep recording — lifting
+    the window later makes history visible again.
+- **Redirects never break** (FEATURES.md INV-7): the resolution/redirect path takes **no
+  policy or usage dependency at all** — structurally, not by convention. `ResolveService` has
+  no such field or constructor parameter, so no policy state can ever block a redirect or
+  stop click recording; `services/resolve_policy_test.go` pins this with reflection over the
+  struct and constructor.
+- **Usage metering & composition** (`backend/usage`): **`usage.Reader`** exposes cheap
+  org-scoped counters — `EventsThisMonth`, `LinksCreatedThisMonth`, `DomainsCount`,
+  `MembersCount`, `APIKeysActiveCount` (all single indexed COUNTs; "this month" = current
+  calendar month, UTC; events = click rows, per INV-4). The open core itself uses only
+  `EventsThisMonth` (the stats service's viewable-events gate). The intended composition:
+  a deployment's Policy implementation is **constructed with a `usage.Reader`**
+  (`usage.NewStore()` in `main.go`) and consults its counters inside each check — the core
+  never couples the two. `EventsThisMonth` is served by the clicks `(org_id, ts)` index
+  (added as the first incremental migration; the `(org_id, link_id, ts)` analytics index
+  cannot serve an org-wide time range).

@@ -13,6 +13,7 @@ import (
 	"gofr.dev/pkg/gofr"
 	"gofr.dev/pkg/gofr/container"
 
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -27,6 +28,12 @@ type domainMocks struct {
 func newDomainService(t *testing.T) (*DomainService, domainMocks, *gofr.Context) {
 	t.Helper()
 
+	return newDomainServiceWithPolicy(t, limits.Unlimited{})
+}
+
+func newDomainServiceWithPolicy(t *testing.T, policy limits.Policy) (*DomainService, domainMocks, *gofr.Context) {
+	t.Helper()
+
 	ctrl := gomock.NewController(t)
 	m := domainMocks{
 		domains: NewMockDomainStore(ctrl),
@@ -37,7 +44,7 @@ func newDomainService(t *testing.T) (*DomainService, domainMocks, *gofr.Context)
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-	return NewDomainService(m.domains, m.members, m.dns, "sho.rt:5810"), m, ctx
+	return NewDomainService(m.domains, m.members, m.dns, policy, "sho.rt:5810"), m, ctx
 }
 
 func stubOwner(m domainMocks) {

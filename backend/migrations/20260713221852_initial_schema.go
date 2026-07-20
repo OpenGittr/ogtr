@@ -17,13 +17,13 @@ import "gofr.dev/pkg/gofr/migration"
 //   - api_keys.key_hint is the recognizable key prefix shown in the list UI;
 //     the full key exists only as a SHA-256 hex in key_hash.
 //
-// Dev convention: this file is edited in place between production releases
-// (phase 6 added api_keys.key_hint and made links.user_id nullable; the geo
-// click-stats work added clicks.country/region; the destination-editing work
-// added the link_edits audit table; the custom-domains work added the domains
-// table; the abuse-protection work added links.status and the abuse_reports
-// table); local dev databases get the equivalent ALTERs/CREATEs applied
-// directly.
+// This file was edited in place while no production database existed (the
+// pre-release dev convention). That convention is retired: schema changes now
+// land as new timestamped migration files (see the package doc in all.go).
+// Additive changes are still folded in here too, so a fresh install builds
+// the full schema from one file — e.g. the clicks (org_id, ts) usage-metering
+// index also exists as the guarded incremental migration 20260721020158,
+// which is what adds it to already-running databases.
 func createInitialSchema() migration.Migrate {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS orgs (
@@ -146,6 +146,7 @@ func createInitialSchema() migration.Migrate {
 			custom_tag_id  VARCHAR(255)    NULL,
 			PRIMARY KEY (id),
 			KEY idx_clicks_org_link_ts (org_id, link_id, ts),
+			KEY idx_clicks_org_ts (org_id, ts),
 			CONSTRAINT fk_clicks_link FOREIGN KEY (link_id) REFERENCES links(id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 

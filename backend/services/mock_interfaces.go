@@ -1309,18 +1309,18 @@ func (mr *MockStatsStoreMockRecorder) DeviceTotals(ctx, orgID, linkID, from, to 
 }
 
 // DistinctTags mocks base method.
-func (m *MockStatsStore) DistinctTags(ctx *gofr.Context, orgID int64) ([]string, error) {
+func (m *MockStatsStore) DistinctTags(ctx *gofr.Context, orgID int64, since string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DistinctTags", ctx, orgID)
+	ret := m.ctrl.Call(m, "DistinctTags", ctx, orgID, since)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DistinctTags indicates an expected call of DistinctTags.
-func (mr *MockStatsStoreMockRecorder) DistinctTags(ctx, orgID any) *gomock.Call {
+func (mr *MockStatsStoreMockRecorder) DistinctTags(ctx, orgID, since any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistinctTags", reflect.TypeOf((*MockStatsStore)(nil).DistinctTags), ctx, orgID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistinctTags", reflect.TypeOf((*MockStatsStore)(nil).DistinctTags), ctx, orgID, since)
 }
 
 // MobileOSPerDay mocks base method.
@@ -1444,63 +1444,102 @@ func (mr *MockStatsStoreMockRecorder) TotalClicks(ctx, orgID, linkID, from, to a
 }
 
 // UTMCampaignCounts mocks base method.
-func (m *MockStatsStore) UTMCampaignCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error) {
+func (m *MockStatsStore) UTMCampaignCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UTMCampaignCounts", ctx, orgID, viewerID)
+	ret := m.ctrl.Call(m, "UTMCampaignCounts", ctx, orgID, viewerID, since)
 	ret0, _ := ret[0].([]models.UTMCount)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UTMCampaignCounts indicates an expected call of UTMCampaignCounts.
-func (mr *MockStatsStoreMockRecorder) UTMCampaignCounts(ctx, orgID, viewerID any) *gomock.Call {
+func (mr *MockStatsStoreMockRecorder) UTMCampaignCounts(ctx, orgID, viewerID, since any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UTMCampaignCounts", reflect.TypeOf((*MockStatsStore)(nil).UTMCampaignCounts), ctx, orgID, viewerID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UTMCampaignCounts", reflect.TypeOf((*MockStatsStore)(nil).UTMCampaignCounts), ctx, orgID, viewerID, since)
 }
 
 // UTMMediumCounts mocks base method.
-func (m *MockStatsStore) UTMMediumCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error) {
+func (m *MockStatsStore) UTMMediumCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UTMMediumCounts", ctx, orgID, viewerID)
+	ret := m.ctrl.Call(m, "UTMMediumCounts", ctx, orgID, viewerID, since)
 	ret0, _ := ret[0].([]models.UTMCount)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UTMMediumCounts indicates an expected call of UTMMediumCounts.
-func (mr *MockStatsStoreMockRecorder) UTMMediumCounts(ctx, orgID, viewerID any) *gomock.Call {
+func (mr *MockStatsStoreMockRecorder) UTMMediumCounts(ctx, orgID, viewerID, since any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UTMMediumCounts", reflect.TypeOf((*MockStatsStore)(nil).UTMMediumCounts), ctx, orgID, viewerID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UTMMediumCounts", reflect.TypeOf((*MockStatsStore)(nil).UTMMediumCounts), ctx, orgID, viewerID, since)
 }
 
 // UTMSourceCounts mocks base method.
-func (m *MockStatsStore) UTMSourceCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error) {
+func (m *MockStatsStore) UTMSourceCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UTMSourceCounts", ctx, orgID, viewerID)
+	ret := m.ctrl.Call(m, "UTMSourceCounts", ctx, orgID, viewerID, since)
 	ret0, _ := ret[0].([]models.UTMCount)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UTMSourceCounts indicates an expected call of UTMSourceCounts.
-func (mr *MockStatsStoreMockRecorder) UTMSourceCounts(ctx, orgID, viewerID any) *gomock.Call {
+func (mr *MockStatsStoreMockRecorder) UTMSourceCounts(ctx, orgID, viewerID, since any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UTMSourceCounts", reflect.TypeOf((*MockStatsStore)(nil).UTMSourceCounts), ctx, orgID, viewerID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UTMSourceCounts", reflect.TypeOf((*MockStatsStore)(nil).UTMSourceCounts), ctx, orgID, viewerID, since)
 }
 
 // UniqueTagClicks mocks base method.
-func (m *MockStatsStore) UniqueTagClicks(ctx *gofr.Context, orgID int64, linkIDs []int64) (int64, error) {
+func (m *MockStatsStore) UniqueTagClicks(ctx *gofr.Context, orgID int64, linkIDs []int64, since string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UniqueTagClicks", ctx, orgID, linkIDs)
+	ret := m.ctrl.Call(m, "UniqueTagClicks", ctx, orgID, linkIDs, since)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UniqueTagClicks indicates an expected call of UniqueTagClicks.
-func (mr *MockStatsStoreMockRecorder) UniqueTagClicks(ctx, orgID, linkIDs any) *gomock.Call {
+func (mr *MockStatsStoreMockRecorder) UniqueTagClicks(ctx, orgID, linkIDs, since any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UniqueTagClicks", reflect.TypeOf((*MockStatsStore)(nil).UniqueTagClicks), ctx, orgID, linkIDs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UniqueTagClicks", reflect.TypeOf((*MockStatsStore)(nil).UniqueTagClicks), ctx, orgID, linkIDs, since)
+}
+
+// MockUsageReader is a mock of UsageReader interface.
+type MockUsageReader struct {
+	ctrl     *gomock.Controller
+	recorder *MockUsageReaderMockRecorder
+	isgomock struct{}
+}
+
+// MockUsageReaderMockRecorder is the mock recorder for MockUsageReader.
+type MockUsageReaderMockRecorder struct {
+	mock *MockUsageReader
+}
+
+// NewMockUsageReader creates a new mock instance.
+func NewMockUsageReader(ctrl *gomock.Controller) *MockUsageReader {
+	mock := &MockUsageReader{ctrl: ctrl}
+	mock.recorder = &MockUsageReaderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockUsageReader) EXPECT() *MockUsageReaderMockRecorder {
+	return m.recorder
+}
+
+// EventsThisMonth mocks base method.
+func (m *MockUsageReader) EventsThisMonth(ctx *gofr.Context, orgID int64) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EventsThisMonth", ctx, orgID)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EventsThisMonth indicates an expected call of EventsThisMonth.
+func (mr *MockUsageReaderMockRecorder) EventsThisMonth(ctx, orgID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EventsThisMonth", reflect.TypeOf((*MockUsageReader)(nil).EventsThisMonth), ctx, orgID)
 }
 
 // MockRuleStore is a mock of RuleStore interface.

@@ -391,7 +391,7 @@ namespace. The check applies to custom aliases *and* to generated codes
 ## 11. Design invariants
 
 Guarantees the implementation must uphold. Each is covered by regression tests; code comments
-reference these by their stable identifiers (INV-1 … INV-6).
+reference these by their stable identifiers (INV-1 … INV-7).
 
 - **INV-1 — Real HTTP redirects.** `GET /{code}` answers with an actual 302 (and
   `Cache-Control: no-store`); resolution never depends on a frontend to perform the redirect.
@@ -407,6 +407,14 @@ reference these by their stable identifiers (INV-1 … INV-6).
   (including PRIVATE ones) cannot be enumerated and codes can never collide with aliases.
 - **INV-6 — Org-scoped everything.** Every query filters by the org derived from the auth
   context — lookups, mutations, and analytics alike. No exceptions.
+- **INV-7 — Redirects never break because of the limits seam.** The deployment's
+  `limits.Policy` (ARCHITECTURE.md §8) can bound resource creation and analytics *viewing*,
+  never resolution: the resolve/redirect path takes no policy or usage dependency at all, so
+  short links keep redirecting and clicks keep recording whatever the policy says. This is
+  structural — the dependency simply does not exist — and pinned by the regression test
+  `TestResolveService_TakesNoPolicyDependency_INV7`
+  (`backend/services/resolve_policy_test.go`), which fails if a policy or usage type is ever
+  threaded into `ResolveService` or its constructor.
 
 ---
 

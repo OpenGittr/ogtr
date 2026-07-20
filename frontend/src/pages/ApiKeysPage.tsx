@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import { ApiError, endpoints } from "../lib/api";
+import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
 import type { ApiKey, CreatedApiKey } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
 import {
@@ -13,6 +13,7 @@ import {
   EmptyIcon,
   EmptyState,
   ErrorBanner,
+  NoticeBanner,
   PageLoader,
   Spinner,
   emptyIconPaths,
@@ -116,6 +117,8 @@ export default function ApiKeysPage() {
   const [name, setName] = useState("");
   const [createBusy, setCreateBusy] = useState(false);
   const [createError, setCreateError] = useState("");
+  // LIMIT_REACHED denial: the server's message, shown verbatim as a notice.
+  const [limitNotice, setLimitNotice] = useState("");
   const [createdKey, setCreatedKey] = useState<CreatedApiKey | null>(null);
 
   const submitCreate = async (event: FormEvent) => {
@@ -126,6 +129,7 @@ export default function ApiKeysPage() {
 
     setCreateBusy(true);
     setCreateError("");
+    setLimitNotice("");
 
     try {
       const created = await endpoints.createApiKey(trimmed);
@@ -146,7 +150,11 @@ export default function ApiKeysPage() {
         ...prev,
       ]);
     } catch (err: unknown) {
-      setCreateError(friendlyError(err, "Could not create the key."));
+      if (err instanceof ApiError && err.code === LIMIT_REACHED) {
+        setLimitNotice(err.message);
+      } else {
+        setCreateError(friendlyError(err, "Could not create the key."));
+      }
     } finally {
       setCreateBusy(false);
     }
@@ -225,6 +233,7 @@ export default function ApiKeysPage() {
           </form>
 
           {createError && <ErrorBanner message={createError} />}
+          {limitNotice && <NoticeBanner message={limitNotice} />}
           {createdKey && (
             <NewKeyPanel created={createdKey} onDismiss={() => setCreatedKey(null)} />
           )}

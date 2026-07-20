@@ -329,26 +329,41 @@ func TestStatsStore_ClickDetails(t *testing.T) {
 }
 
 func TestStatsStore_UniqueTagClicks(t *testing.T) {
-	const query = "SELECT COUNT(DISTINCT custom_tag_id) FROM clicks WHERE org_id = ? AND link_id IN (?, ?, ?)"
+	// The trailing ts bound is the analytics-window retention cutoff
+	// (1970-01-01 = unbounded), always bound so the query shape is constant.
+	const query = "SELECT COUNT(DISTINCT custom_tag_id) FROM clicks WHERE org_id = ? AND link_id IN (?, ?, ?) AND ts >= ?"
 
 	tests := []struct {
 		desc    string
+		since   string
 		mock    func(m sqlmock.Sqlmock)
 		want    int64
 		wantErr bool
 	}{
 		{
-			desc: "distinct tags counted with one placeholder per id",
+			desc:  "distinct tags counted with one placeholder per id",
+			since: "1970-01-01",
 			mock: func(m sqlmock.Sqlmock) {
-				m.ExpectQuery(query).WithArgs(statsOrg, int64(1), int64(2), int64(3)).
+				m.ExpectQuery(query).WithArgs(statsOrg, int64(1), int64(2), int64(3), "1970-01-01").
 					WillReturnRows(sqlmock.NewRows([]string{"n"}).AddRow(2))
 			},
 			want: 2,
 		},
 		{
-			desc: "db error",
+			desc:  "retention cutoff binds as the ts bound",
+			since: "2026-06-21",
 			mock: func(m sqlmock.Sqlmock) {
-				m.ExpectQuery(query).WithArgs(statsOrg, int64(1), int64(2), int64(3)).WillReturnError(errDB)
+				m.ExpectQuery(query).WithArgs(statsOrg, int64(1), int64(2), int64(3), "2026-06-21").
+					WillReturnRows(sqlmock.NewRows([]string{"n"}).AddRow(1))
+			},
+			want: 1,
+		},
+		{
+			desc:  "db error",
+			since: "1970-01-01",
+			mock: func(m sqlmock.Sqlmock) {
+				m.ExpectQuery(query).WithArgs(statsOrg, int64(1), int64(2), int64(3), "1970-01-01").
+					WillReturnError(errDB)
 			},
 			wantErr: true,
 		},
@@ -359,7 +374,7 @@ func TestStatsStore_UniqueTagClicks(t *testing.T) {
 			ctx, mocks := newTestCtx(t)
 			tc.mock(mocks.SQL)
 
-			got, err := NewStatsStore().UniqueTagClicks(ctx, statsOrg, []int64{1, 2, 3})
+			got, err := NewStatsStore().UniqueTagClicks(ctx, statsOrg, []int64{1, 2, 3}, tc.since)
 
 			assert.Equal(t, tc.wantErr, err != nil)
 			assert.Equal(t, tc.want, got)
@@ -377,7 +392,7 @@ func TestStatsStore_DistinctTags(t *testing.T) {
 		{
 			desc: "full set in one query",
 			mock: func(m sqlmock.Sqlmock) {
-				m.ExpectQuery(distinctTagsQuery).WithArgs(statsOrg).
+				m.ExpectQuery(distinctTagsQuery).WithArgs(statsOrg, "1970-01-01").
 					WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("promo").AddRow("social"))
 			},
 			want: []string{"promo", "social"},
@@ -385,7 +400,7 @@ func TestStatsStore_DistinctTags(t *testing.T) {
 		{
 			desc: "no tags is an empty (non-nil) list",
 			mock: func(m sqlmock.Sqlmock) {
-				m.ExpectQuery(distinctTagsQuery).WithArgs(statsOrg).
+				m.ExpectQuery(distinctTagsQuery).WithArgs(statsOrg, "1970-01-01").
 					WillReturnRows(sqlmock.NewRows([]string{"tag"}))
 			},
 			want: []string{},
@@ -393,7 +408,7 @@ func TestStatsStore_DistinctTags(t *testing.T) {
 		{
 			desc: "db error",
 			mock: func(m sqlmock.Sqlmock) {
-				m.ExpectQuery(distinctTagsQuery).WithArgs(statsOrg).WillReturnError(errDB)
+				m.ExpectQuery(distinctTagsQuery).WithArgs(statsOrg, "1970-01-01").WillReturnError(errDB)
 			},
 			wantErr: true,
 		},
@@ -404,7 +419,7 @@ func TestStatsStore_DistinctTags(t *testing.T) {
 			ctx, mocks := newTestCtx(t)
 			tc.mock(mocks.SQL)
 
-			got, err := NewStatsStore().DistinctTags(ctx, statsOrg)
+			got, err := NewStatsStore().DistinctTags(ctx, statsOrg, "1970-01-01")
 
 			assert.Equal(t, tc.wantErr, err != nil)
 			assert.Equal(t, tc.want, got)
@@ -424,20 +439,20 @@ func TestStatsStore_UTMCounts(t *testing.T) {
 		call  func(ctx *gofr.Context) ([]models.UTMCount, error)
 	}{
 		{"source", utmSourceQuery, func(ctx *gofr.Context) ([]models.UTMCount, error) {
-			return store.UTMSourceCounts(ctx, statsOrg, viewer)
+			return store.UTMSourceCounts(ctx, statsOrg, viewer, "1970-01-01")
 		}},
 		{"medium", utmMediumQuery, func(ctx *gofr.Context) ([]models.UTMCount, error) {
-			return store.UTMMediumCounts(ctx, statsOrg, viewer)
+			return store.UTMMediumCounts(ctx, statsOrg, viewer, "1970-01-01")
 		}},
 		{"campaign", utmCampaignQuery, func(ctx *gofr.Context) ([]models.UTMCount, error) {
-			return store.UTMCampaignCounts(ctx, statsOrg, viewer)
+			return store.UTMCampaignCounts(ctx, statsOrg, viewer, "1970-01-01")
 		}},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
 			ctx, mocks := newTestCtx(t)
-			mocks.SQL.ExpectQuery(tc.query).WithArgs(statsOrg, viewer).
+			mocks.SQL.ExpectQuery(tc.query).WithArgs(statsOrg, viewer, "1970-01-01").
 				WillReturnRows(sqlmock.NewRows([]string{"value", "id", "code", "url", "n"}).
 					AddRow("google", 9, "abc1234", "https://x.co", 5))
 
@@ -451,7 +466,7 @@ func TestStatsStore_UTMCounts(t *testing.T) {
 
 		t.Run(tc.desc+" db error", func(t *testing.T) {
 			ctx, mocks := newTestCtx(t)
-			mocks.SQL.ExpectQuery(tc.query).WithArgs(statsOrg, viewer).WillReturnError(errDB)
+			mocks.SQL.ExpectQuery(tc.query).WithArgs(statsOrg, viewer, "1970-01-01").WillReturnError(errDB)
 
 			_, err := tc.call(ctx)
 

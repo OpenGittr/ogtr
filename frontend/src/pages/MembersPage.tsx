@@ -6,13 +6,23 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth/AuthContext";
-import { ApiError, endpoints } from "../lib/api";
+import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
 import type { Invite, Member } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
-import { ErrorBanner, InitialAvatar, PageLoader, RoleBadge, Spinner } from "../components/ui";
+import {
+  ErrorBanner,
+  InitialAvatar,
+  NoticeBanner,
+  PageLoader,
+  RoleBadge,
+  Spinner,
+} from "../components/ui";
 
 function friendlyError(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
+    // LIMIT_REACHED is also a 403 — its server message wins over the
+    // owner-role hint (callers show it via NoticeBanner where applicable).
+    if (err.code === LIMIT_REACHED) return err.message;
     if (err.status === 403) return "Only an organization owner can do this.";
     if (err.message) return capitalize(err.message);
   }
@@ -90,6 +100,8 @@ export default function MembersPage() {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteNotice, setInviteNotice] = useState("");
+  // LIMIT_REACHED denial: the server's message, shown verbatim as a notice.
+  const [limitNotice, setLimitNotice] = useState("");
   const [revokeBusyId, setRevokeBusyId] = useState(0);
   const [revokeError, setRevokeError] = useState("");
 
@@ -102,6 +114,7 @@ export default function MembersPage() {
     setInviteBusy(true);
     setInviteError("");
     setInviteNotice("");
+    setLimitNotice("");
 
     try {
       const invite = await endpoints.createInvite(email);
@@ -110,7 +123,11 @@ export default function MembersPage() {
       setInviteEmail("");
       setInviteNotice(`Invited ${email}. They will join when they sign in.`);
     } catch (err: unknown) {
-      setInviteError(friendlyError(err, "Could not send the invite."));
+      if (err instanceof ApiError && err.code === LIMIT_REACHED) {
+        setLimitNotice(err.message);
+      } else {
+        setInviteError(friendlyError(err, "Could not send the invite."));
+      }
     } finally {
       setInviteBusy(false);
     }
@@ -263,6 +280,7 @@ export default function MembersPage() {
           )}
 
           {inviteError && <ErrorBanner message={inviteError} />}
+          {limitNotice && <NoticeBanner message={limitNotice} />}
           {inviteNotice && (
             <p
               className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"

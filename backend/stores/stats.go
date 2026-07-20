@@ -86,12 +86,15 @@ const (
 	clickDetailsQuery = "SELECT id, link_id, custom_tag_id, ts FROM clicks WHERE " +
 		rangeFilter + " ORDER BY ts DESC, id DESC"
 
+	// The org-level queries below carry a `ts >= ?` retention bound (`since`,
+	// YYYY-MM-DD): the stats service binds the policy's retention cutoff, or
+	// 1970-01-01 when unbounded — one query shape either way.
 	distinctTagsQuery = "SELECT DISTINCT custom_tag_id FROM clicks" +
-		" WHERE org_id = ? AND custom_tag_id IS NOT NULL ORDER BY custom_tag_id"
+		" WHERE org_id = ? AND ts >= ? AND custom_tag_id IS NOT NULL ORDER BY custom_tag_id"
 
 	// visibleLinkJoinFilter scopes UTM analyses to links the viewer can see —
 	// org-scoped, other users' PRIVATE links excluded (FEATURES.md §1.1).
-	visibleLinkJoinFilter = "c.org_id = ? AND (l.type = 'PUBLIC' OR l.user_id = ?)"
+	visibleLinkJoinFilter = "c.org_id = ? AND (l.type = 'PUBLIC' OR l.user_id = ?) AND c.ts >= ?"
 
 	utmSourceQuery = "SELECT c.utm_source, l.id, l.code, l.destination_url, COUNT(c.id)" +
 		" FROM clicks c INNER JOIN links l ON l.id = c.link_id WHERE " + visibleLinkJoinFilter +
@@ -245,20 +248,23 @@ func (*StatsStore) ClickDetails(ctx *gofr.Context, orgID, linkID int64, from, to
 
 // UniqueTagClicks counts distinct non-null custom_tag_id values over the given
 // links' clicks, org-scoped (ids outside the org simply never match — the
-// org_id predicate scopes the count; FEATURES.md §5.2). The IN list is built
-// from placeholders only — every id binds as a parameter.
-func (*StatsStore) UniqueTagClicks(ctx *gofr.Context, orgID int64, linkIDs []int64) (int64, error) {
+// org_id predicate scopes the count; FEATURES.md §5.2). since is the
+// retention bound (1970-01-01 = unbounded). The IN list is built from
+// placeholders only — every id binds as a parameter.
+func (*StatsStore) UniqueTagClicks(ctx *gofr.Context, orgID int64, linkIDs []int64, since string) (int64, error) {
 	placeholders := strings.TrimSuffix(strings.Repeat("?, ", len(linkIDs)), ", ")
 
-	args := make([]any, 0, len(linkIDs)+1)
+	args := make([]any, 0, len(linkIDs)+2)
 	args = append(args, orgID)
 
 	for _, id := range linkIDs {
 		args = append(args, id)
 	}
 
+	args = append(args, since)
+
 	query := "SELECT COUNT(DISTINCT custom_tag_id) FROM clicks WHERE org_id = ? AND link_id IN (" +
-		placeholders + ")"
+		placeholders + ") AND ts >= ?"
 
 	var n int64
 	if err := ctx.SQL.QueryRowContext(ctx, query, args...).Scan(&n); err != nil {
@@ -269,9 +275,10 @@ func (*StatsStore) UniqueTagClicks(ctx *gofr.Context, orgID int64, linkIDs []int
 }
 
 // DistinctTags lists every distinct non-null custom_tag_id in the org's click
-// data — the full set in one query (FEATURES.md §5.3).
-func (*StatsStore) DistinctTags(ctx *gofr.Context, orgID int64) ([]string, error) {
-	rows, err := ctx.SQL.QueryContext(ctx, distinctTagsQuery, orgID)
+// data — the full set in one query (FEATURES.md §5.3). since is the retention
+// bound (1970-01-01 = unbounded).
+func (*StatsStore) DistinctTags(ctx *gofr.Context, orgID int64, since string) ([]string, error) {
+	rows, err := ctx.SQL.QueryContext(ctx, distinctTagsQuery, orgID, since)
 	if err != nil {
 		return nil, err
 	}
@@ -293,20 +300,21 @@ func (*StatsStore) DistinctTags(ctx *gofr.Context, orgID int64) ([]string, error
 }
 
 // UTMSourceCounts groups clicks by utm_source per link (empty values skipped),
-// over links the viewer can see in the org.
-func (*StatsStore) UTMSourceCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error) {
-	return utmQuery(ctx, utmSourceQuery, orgID, viewerID)
+// over links the viewer can see in the org. since is the retention bound
+// (1970-01-01 = unbounded).
+func (*StatsStore) UTMSourceCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error) {
+	return utmQuery(ctx, utmSourceQuery, orgID, viewerID, since)
 }
 
 // UTMMediumCounts groups clicks by utm_medium per link (empty values skipped).
-func (*StatsStore) UTMMediumCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error) {
-	return utmQuery(ctx, utmMediumQuery, orgID, viewerID)
+func (*StatsStore) UTMMediumCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error) {
+	return utmQuery(ctx, utmMediumQuery, orgID, viewerID, since)
 }
 
 // UTMCampaignCounts groups clicks by utm_campaign per link (empty values
 // skipped).
-func (*StatsStore) UTMCampaignCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error) {
-	return utmQuery(ctx, utmCampaignQuery, orgID, viewerID)
+func (*StatsStore) UTMCampaignCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error) {
+	return utmQuery(ctx, utmCampaignQuery, orgID, viewerID, since)
 }
 
 // countQuery runs a single-COUNT statement.
@@ -366,8 +374,8 @@ func dimQuery(ctx *gofr.Context, query string, orgID, linkID int64, from, to str
 }
 
 // utmQuery scans (utm value, link id, code, url, count) rows.
-func utmQuery(ctx *gofr.Context, query string, orgID, viewerID int64) ([]models.UTMCount, error) {
-	rows, err := ctx.SQL.QueryContext(ctx, query, orgID, viewerID)
+func utmQuery(ctx *gofr.Context, query string, orgID, viewerID int64, since string) ([]models.UTMCount, error) {
+	rows, err := ctx.SQL.QueryContext(ctx, query, orgID, viewerID, since)
 	if err != nil {
 		return nil, err
 	}

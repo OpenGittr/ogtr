@@ -12,6 +12,7 @@ import (
 	"gofr.dev/pkg/gofr"
 
 	"github.com/opengittr/ogtr/backend/apierrors"
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -44,17 +45,22 @@ type DomainService struct {
 	domains   DomainStore
 	members   MemberStore
 	dns       DNSResolver
+	policy    limits.Policy
 	shortHost string // SHORT_DOMAIN with any port stripped
 }
 
 // NewDomainService wires a DomainService. dns is the TXT-record resolver
-// (net.DefaultResolver in production); shortDomain is the deployment's
-// SHORT_DOMAIN (a port, as in local dev, is ignored for comparisons).
-func NewDomainService(domains DomainStore, members MemberStore, dns DNSResolver, shortDomain string) *DomainService {
+// (net.DefaultResolver in production); policy bounds domain registration
+// (wire limits.Unlimited{} unless the deployment supplies its own);
+// shortDomain is the deployment's SHORT_DOMAIN (a port, as in local dev, is
+// ignored for comparisons).
+func NewDomainService(domains DomainStore, members MemberStore, dns DNSResolver,
+	policy limits.Policy, shortDomain string) *DomainService {
 	return &DomainService{
 		domains:   domains,
 		members:   members,
 		dns:       dns,
+		policy:    policy,
 		shortHost: NormalizeHost(shortDomain),
 	}
 }
@@ -70,6 +76,12 @@ func (s *DomainService) Create(ctx *gofr.Context, orgID, actorID int64, hostname
 	normalized, err := s.normalizeHostname(hostname)
 	if err != nil {
 		return nil, err
+	}
+
+	// The deployment's limits.Policy gates domain registration after input
+	// validation and before any store access; a denial is 403 LIMIT_REACHED.
+	if err := s.policy.CanAddDomain(ctx, orgID); err != nil {
+		return nil, limitError(err)
 	}
 
 	existing, err := s.domains.GetByHostname(ctx, normalized)

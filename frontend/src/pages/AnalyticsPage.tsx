@@ -4,10 +4,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
-import { endpoints } from "../lib/api";
+import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
 import type { UTMAnalysis, UTMCount } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
-import { EmptyIcon, EmptyState, ErrorBanner, PageLoader, emptyIconPaths } from "../components/ui";
+import {
+  EmptyIcon,
+  EmptyState,
+  ErrorBanner,
+  NoticeBanner,
+  PageLoader,
+  emptyIconPaths,
+} from "../components/ui";
 
 const SECTIONS: { key: keyof UTMAnalysis; title: string; utmHeader: string; blurb: string }[] = [
   {
@@ -86,15 +93,25 @@ export default function AnalyticsPage() {
   const [analysis, setAnalysis] = useState<UTMAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // LIMIT_REACHED (analytics viewing gated by the deployment's policy): the
+  // server's message, shown verbatim as a notice in place of the tables.
+  const [limitNotice, setLimitNotice] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    setLimitNotice("");
 
     try {
       setAnalysis(await endpoints.utmAnalysis());
-    } catch {
-      setError("Could not load the UTM analysis. Please try again.");
+    } catch (err: unknown) {
+      setAnalysis(null);
+
+      if (err instanceof ApiError && err.code === LIMIT_REACHED) {
+        setLimitNotice(err.message);
+      } else {
+        setError("Could not load the UTM analysis. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -123,6 +140,7 @@ export default function AnalyticsPage() {
       </div>
 
       {error && <ErrorBanner message={error} onRetry={() => void load()} />}
+      {limitNotice && <NoticeBanner message={limitNotice} />}
 
       {allEmpty && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white">

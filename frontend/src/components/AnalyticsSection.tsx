@@ -4,11 +4,11 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { ApiError, endpoints } from "../lib/api";
+import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
 import type { DayCount, DayDimCount, DimCount, LinkStatsReport, ShortURL } from "../lib/types";
 import { formatDateTime } from "./LinkList";
 import { ColumnChart, HBarList, StatTile, shortDate } from "./charts";
-import { ErrorBanner, Spinner } from "./ui";
+import { ErrorBanner, NoticeBanner, Spinner } from "./ui";
 
 const RECENT_CLICKS_SHOWN = 50;
 
@@ -104,6 +104,9 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
   const [report, setReport] = useState<LinkStatsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // LIMIT_REACHED (analytics viewing gated by the deployment's policy): the
+  // server's message, shown verbatim as a notice in place of the charts.
+  const [limitNotice, setLimitNotice] = useState("");
 
   const [dimension, setDimension] = useState<Dimension>("browser");
   const [locationLevel, setLocationLevel] = useState<LocationLevel>("countries");
@@ -112,16 +115,22 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    setLimitNotice("");
 
     try {
       setReport(await endpoints.linkStats(link.id, from, to));
     } catch (err: unknown) {
       setReport(null);
-      setError(
-        err instanceof ApiError && err.status === 400
-          ? "That date range is not valid — pick a start date on or before the end date."
-          : "Could not load analytics. Please try again.",
-      );
+
+      if (err instanceof ApiError && err.code === LIMIT_REACHED) {
+        setLimitNotice(err.message);
+      } else {
+        setError(
+          err instanceof ApiError && err.status === 400
+            ? "That date range is not valid — pick a start date on or before the end date."
+            : "Could not load analytics. Please try again.",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -218,6 +227,7 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
       </div>
 
       {error && <ErrorBanner message={error} />}
+      {limitNotice && <NoticeBanner message={limitNotice} />}
 
       {loading ? (
         <div className="flex justify-center rounded-xl border border-slate-200 bg-white py-16 shadow-sm">

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth/AuthContext";
-import { ApiError, endpoints } from "../lib/api";
+import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
 import type { OrgDomain } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
 import {
@@ -14,12 +14,16 @@ import {
   EmptyIcon,
   EmptyState,
   ErrorBanner,
+  NoticeBanner,
   PageLoader,
   Spinner,
 } from "../components/ui";
 
 function friendlyError(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
+    // LIMIT_REACHED is also a 403 — its server message wins over the
+    // owner-role hint (callers show it via NoticeBanner where applicable).
+    if (err.code === LIMIT_REACHED) return err.message;
     if (err.status === 403) return "Only an organization owner can manage domains.";
     if (err.message) return err.message[0].toUpperCase() + err.message.slice(1);
   }
@@ -127,6 +131,8 @@ export default function DomainsPage() {
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState("");
   const [addNotice, setAddNotice] = useState("");
+  // LIMIT_REACHED denial: the server's message, shown verbatim as a notice.
+  const [limitNotice, setLimitNotice] = useState("");
 
   const submitAdd = async (event: FormEvent) => {
     event.preventDefault();
@@ -137,6 +143,7 @@ export default function DomainsPage() {
     setAddBusy(true);
     setAddError("");
     setAddNotice("");
+    setLimitNotice("");
 
     try {
       const created = await endpoints.createDomain(trimmed);
@@ -147,7 +154,11 @@ export default function DomainsPage() {
         `${created.hostname} added. Publish the TXT record shown below, then click Verify.`,
       );
     } catch (err: unknown) {
-      setAddError(friendlyError(err, "Could not add the domain."));
+      if (err instanceof ApiError && err.code === LIMIT_REACHED) {
+        setLimitNotice(err.message);
+      } else {
+        setAddError(friendlyError(err, "Could not add the domain."));
+      }
     } finally {
       setAddBusy(false);
     }
@@ -276,6 +287,7 @@ export default function DomainsPage() {
           )}
 
           {addError && <ErrorBanner message={addError} />}
+          {limitNotice && <NoticeBanner message={limitNotice} />}
           {addNotice && (
             <p
               className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"

@@ -1,12 +1,14 @@
 package services
 
 import (
+	"errors"
 	"strings"
 
 	"gofr.dev/pkg/gofr"
 
 	"github.com/opengittr/ogtr/backend/apierrors"
 	"github.com/opengittr/ogtr/backend/auth"
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -35,15 +37,22 @@ type AuthService struct {
 	orgs      OrgStore
 	members   MemberStore
 	invites   InviteStore
+	policy    limits.Policy
 }
 
 // NewAuthService wires an AuthService. providers maps enabled provider names
 // (auth.ProviderGoogle, auth.ProviderDev) to their IdentityProvider — only
 // enabled providers are present, so a login via a disabled provider fails
-// with 404 even if a route somehow reaches the service.
+// with 404 even if a route somehow reaches the service. policy bounds
+// membership creation on the login path (invite acceptance, auto-join); wire
+// limits.Unlimited{} unless the deployment supplies its own.
 func NewAuthService(providers map[string]auth.IdentityProvider, tokens TokenIssuer,
-	users UserStore, orgs OrgStore, members MemberStore, invites InviteStore) *AuthService {
-	return &AuthService{providers: providers, tokens: tokens, users: users, orgs: orgs, members: members, invites: invites}
+	users UserStore, orgs OrgStore, members MemberStore, invites InviteStore,
+	policy limits.Policy) *AuthService {
+	return &AuthService{
+		providers: providers, tokens: tokens, users: users,
+		orgs: orgs, members: members, invites: invites, policy: policy,
+	}
 }
 
 // Login exchanges a provider credential (Google ID token, dev email/name
@@ -108,7 +117,35 @@ func (s *AuthService) Login(ctx *gofr.Context, provider, credential string) (*Au
 	return s.buildAuthResult(user, orgs)
 }
 
-// acceptPendingInvites converts the email's pending invites to memberships.
+// joinAsMember is the single membership-creating choke point on the login
+// path (invite acceptance and auto-join both go through it): it consults the
+// deployment's limits.Policy (CanAddMember) and only then writes the
+// membership. A denial must never fail a login — the user simply does not
+// join (joined=false), the denial is logged, and a pending invite stays
+// PENDING so it converts on a later login once the policy allows. Any other
+// policy error is an internal failure and propagates.
+func (s *AuthService) joinAsMember(ctx *gofr.Context, orgID, userID int64) (joined bool, err error) {
+	if err := s.policy.CanAddMember(ctx, orgID); err != nil {
+		var denial *limits.Denial
+		if errors.As(err, &denial) {
+			ctx.Logger.Infof("user %d not joined to org %d (policy): %s", userID, orgID, denial.Error())
+
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	if err := s.members.Add(ctx, orgID, userID, models.RoleMember); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// acceptPendingInvites converts the email's pending invites to memberships
+// (via the joinAsMember choke point — a policy denial leaves the invite
+// PENDING and the login continues).
 func (s *AuthService) acceptPendingInvites(ctx *gofr.Context, user *models.User, email string) error {
 	invites, err := s.invites.PendingForEmail(ctx, email)
 	if err != nil {
@@ -122,8 +159,13 @@ func (s *AuthService) acceptPendingInvites(ctx *gofr.Context, user *models.User,
 		}
 
 		if role == "" {
-			if err := s.members.Add(ctx, invites[i].OrgID, user.ID, models.RoleMember); err != nil {
+			joined, err := s.joinAsMember(ctx, invites[i].OrgID, user.ID)
+			if err != nil {
 				return err
+			}
+
+			if !joined {
+				continue // invite stays PENDING; retried on a later login
 			}
 		}
 
@@ -138,7 +180,9 @@ func (s *AuthService) acceptPendingInvites(ctx *gofr.Context, user *models.User,
 }
 
 // autoJoinByDomain joins an org-less user to the first org whose
-// auto_join_domain matches their email domain, as MEMBER.
+// auto_join_domain matches their email domain, as MEMBER (via the
+// joinAsMember choke point — a policy denial leaves the user org-less and the
+// login continues).
 func (s *AuthService) autoJoinByDomain(ctx *gofr.Context, user *models.User, domain string) ([]models.OrgMembership, error) {
 	org, err := s.orgs.GetByAutoJoinDomain(ctx, domain)
 	if err != nil {
@@ -149,8 +193,13 @@ func (s *AuthService) autoJoinByDomain(ctx *gofr.Context, user *models.User, dom
 		return []models.OrgMembership{}, nil
 	}
 
-	if err := s.members.Add(ctx, org.ID, user.ID, models.RoleMember); err != nil {
+	joined, err := s.joinAsMember(ctx, org.ID, user.ID)
+	if err != nil {
 		return nil, err
+	}
+
+	if !joined {
+		return []models.OrgMembership{}, nil
 	}
 
 	ctx.Logger.Infof("user %d auto-joined org %d via domain %s", user.ID, org.ID, domain)

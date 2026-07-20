@@ -156,11 +156,21 @@ type StatsStore interface {
 	DeeplinkClickCount(ctx *gofr.Context, orgID, linkID int64, from, to string, isDeeplink bool) (int64, error)
 	TargetMatchedCount(ctx *gofr.Context, orgID, linkID int64, from, to string) (int64, error)
 	ClickDetails(ctx *gofr.Context, orgID, linkID int64, from, to string) ([]models.ClickDetail, error)
-	UniqueTagClicks(ctx *gofr.Context, orgID int64, linkIDs []int64) (int64, error)
-	DistinctTags(ctx *gofr.Context, orgID int64) ([]string, error)
-	UTMSourceCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error)
-	UTMMediumCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error)
-	UTMCampaignCounts(ctx *gofr.Context, orgID, viewerID int64) ([]models.UTMCount, error)
+	// The org-level queries below take a retention bound `since`
+	// (YYYY-MM-DD; 1970-01-01 = unbounded) from the org's analytics window.
+	UniqueTagClicks(ctx *gofr.Context, orgID int64, linkIDs []int64, since string) (int64, error)
+	DistinctTags(ctx *gofr.Context, orgID int64, since string) ([]string, error)
+	UTMSourceCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error)
+	UTMMediumCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error)
+	UTMCampaignCounts(ctx *gofr.Context, orgID, viewerID int64, since string) ([]models.UTMCount, error)
+}
+
+// UsageReader is the usage-metering dependency of the stats service: the
+// current-month event count backing the analytics viewable-events gate
+// (usage.Store implements it; the full policy-facing counter set is
+// usage.Reader in backend/usage).
+type UsageReader interface {
+	EventsThisMonth(ctx *gofr.Context, orgID int64) (int64, error)
 }
 
 // RuleStore is the link_rules data-access dependency.

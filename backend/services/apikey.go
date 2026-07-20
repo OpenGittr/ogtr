@@ -9,6 +9,7 @@ import (
 	"gofr.dev/pkg/gofr"
 
 	"github.com/opengittr/ogtr/backend/apierrors"
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -39,16 +40,18 @@ type CreatedAPIKey struct {
 // manage the org's keys — the spec is silent on roles, so we keep the
 // simplest rule (documented in ARCHITECTURE.md §4).
 type APIKeyService struct {
-	keys APIKeyStore
+	keys   APIKeyStore
+	policy limits.Policy
 
 	// touches tracks the fire-and-forget last_used_at updates so tests can
 	// wait for them; production never Waits.
 	touches sync.WaitGroup
 }
 
-// NewAPIKeyService wires an APIKeyService.
-func NewAPIKeyService(keys APIKeyStore) *APIKeyService {
-	return &APIKeyService{keys: keys}
+// NewAPIKeyService wires an APIKeyService. policy bounds key creation; wire
+// limits.Unlimited{} unless the deployment supplies its own.
+func NewAPIKeyService(keys APIKeyStore, policy limits.Policy) *APIKeyService {
+	return &APIKeyService{keys: keys, policy: policy}
 }
 
 // Create generates a key ("slk_" + 40 crypto/rand base62 chars), stores its
@@ -62,6 +65,12 @@ func (s *APIKeyService) Create(ctx *gofr.Context, orgID int64, name string) (*Cr
 
 	if len(name) > maxAPIKeyNameLength {
 		return nil, apierrors.Unprocessable("name must be at most 255 characters")
+	}
+
+	// The deployment's limits.Policy gates key creation after input
+	// validation and before any store access; a denial is 403 LIMIT_REACHED.
+	if err := s.policy.CanCreateAPIKey(ctx, orgID); err != nil {
+		return nil, limitError(err)
 	}
 
 	random, err := randomCode(apiKeyRandomLength)

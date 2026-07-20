@@ -13,6 +13,7 @@ import (
 	"gofr.dev/pkg/gofr"
 	"gofr.dev/pkg/gofr/container"
 
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -26,20 +27,38 @@ var errStatsDB = errors.New("stats db down")
 func newStatsService(t *testing.T) (*StatsService, *MockStatsStore, *MockLinkStore, *MockRuleStore, *gofr.Context) {
 	t.Helper()
 
+	// Unlimited policy: unbounded window, and the usage reader is never
+	// consulted (the gomock controller fails the test if it were).
+	svc, stats, links, rules, _, ctx := newStatsServiceWithPolicy(t, limits.Unlimited{})
+
+	return svc, stats, links, rules, ctx
+}
+
+func newStatsServiceWithPolicy(t *testing.T, policy limits.Policy) (*StatsService,
+	*MockStatsStore, *MockLinkStore, *MockRuleStore, *MockUsageReader, *gofr.Context) {
+	t.Helper()
+
 	ctrl := gomock.NewController(t)
 	stats := NewMockStatsStore(ctrl)
 	links := NewMockLinkStore(ctrl)
 	rules := NewMockRuleStore(ctrl)
+	usageReader := NewMockUsageReader(ctrl)
 
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-	return NewStatsService(stats, links, rules), stats, links, rules, ctx
+	return NewStatsService(stats, links, rules, policy, usageReader), stats, links, rules, usageReader, ctx
 }
 
 // expectCoreStats wires the sixteen core report queries with distinct values
 // so the assembled report proves each store result lands in the right field.
 func expectCoreStats(stats *MockStatsStore) {
+	expectCoreStatsRange(stats, statsFrom, statsTo)
+}
+
+// expectCoreStatsRange is expectCoreStats against an explicit date range (the
+// retention-clamp tests assert the clamped from-date reaches every query).
+func expectCoreStatsRange(stats *MockStatsStore, statsFrom, statsTo string) {
 	stats.EXPECT().TotalClicks(gomock.Any(), int64(3), int64(9), statsFrom, statsTo).Return(int64(30), nil)
 	stats.EXPECT().ClicksPerDay(gomock.Any(), int64(3), int64(9), statsFrom, statsTo).
 		Return([]models.DayCount{{Date: "2026-06-14", Clicks: 30}}, nil)
@@ -267,7 +286,7 @@ func TestStatsService_UniqueClicks(t *testing.T) {
 			desc: "distinct tags counted",
 			ids:  []int64{1, 2, 3},
 			setup: func(stats *MockStatsStore) {
-				stats.EXPECT().UniqueTagClicks(gomock.Any(), int64(3), []int64{1, 2, 3}).Return(int64(2), nil)
+				stats.EXPECT().UniqueTagClicks(gomock.Any(), int64(3), []int64{1, 2, 3}, unboundedSince).Return(int64(2), nil)
 			},
 			want: 2,
 		},
@@ -303,7 +322,7 @@ func TestStatsService_UniqueClicks(t *testing.T) {
 
 func TestStatsService_Tags(t *testing.T) {
 	svc, stats, _, _, ctx := newStatsService(t)
-	stats.EXPECT().DistinctTags(gomock.Any(), int64(3)).Return([]string{"promo", "social"}, nil)
+	stats.EXPECT().DistinctTags(gomock.Any(), int64(3), unboundedSince).Return([]string{"promo", "social"}, nil)
 
 	got, err := svc.Tags(ctx, 3)
 
@@ -318,9 +337,9 @@ func TestStatsService_UTMAnalysis(t *testing.T) {
 	medium := []models.UTMCount{{UTMValue: "referrer by Mobile", LinkID: 9, Clicks: 3}}
 	campaign := []models.UTMCount{{UTMValue: "launch", LinkID: 9, Clicks: 2}}
 
-	stats.EXPECT().UTMSourceCounts(gomock.Any(), int64(3), int64(7)).Return(source, nil)
-	stats.EXPECT().UTMMediumCounts(gomock.Any(), int64(3), int64(7)).Return(medium, nil)
-	stats.EXPECT().UTMCampaignCounts(gomock.Any(), int64(3), int64(7)).Return(campaign, nil)
+	stats.EXPECT().UTMSourceCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return(source, nil)
+	stats.EXPECT().UTMMediumCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return(medium, nil)
+	stats.EXPECT().UTMCampaignCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return(campaign, nil)
 
 	got, err := svc.UTMAnalysis(ctx, 3, 7)
 
@@ -338,22 +357,22 @@ func TestStatsService_UTMAnalysis_Errors(t *testing.T) {
 		{
 			desc: "source query fails",
 			setup: func(stats *MockStatsStore) {
-				stats.EXPECT().UTMSourceCounts(gomock.Any(), int64(3), int64(7)).Return(nil, errStatsDB)
+				stats.EXPECT().UTMSourceCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return(nil, errStatsDB)
 			},
 		},
 		{
 			desc: "medium query fails",
 			setup: func(stats *MockStatsStore) {
-				stats.EXPECT().UTMSourceCounts(gomock.Any(), int64(3), int64(7)).Return([]models.UTMCount{}, nil)
-				stats.EXPECT().UTMMediumCounts(gomock.Any(), int64(3), int64(7)).Return(nil, errStatsDB)
+				stats.EXPECT().UTMSourceCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return([]models.UTMCount{}, nil)
+				stats.EXPECT().UTMMediumCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return(nil, errStatsDB)
 			},
 		},
 		{
 			desc: "campaign query fails",
 			setup: func(stats *MockStatsStore) {
-				stats.EXPECT().UTMSourceCounts(gomock.Any(), int64(3), int64(7)).Return([]models.UTMCount{}, nil)
-				stats.EXPECT().UTMMediumCounts(gomock.Any(), int64(3), int64(7)).Return([]models.UTMCount{}, nil)
-				stats.EXPECT().UTMCampaignCounts(gomock.Any(), int64(3), int64(7)).Return(nil, errStatsDB)
+				stats.EXPECT().UTMSourceCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return([]models.UTMCount{}, nil)
+				stats.EXPECT().UTMMediumCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return([]models.UTMCount{}, nil)
+				stats.EXPECT().UTMCampaignCounts(gomock.Any(), int64(3), int64(7), unboundedSince).Return(nil, errStatsDB)
 			},
 		},
 	}

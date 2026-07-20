@@ -10,6 +10,7 @@ import (
 	"gofr.dev/pkg/gofr"
 
 	"github.com/opengittr/ogtr/backend/apierrors"
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -52,6 +53,7 @@ type LinkService struct {
 	members      MemberStore
 	domains      DomainStore
 	scanner      URLScanner
+	policy       limits.Policy
 	reserved     *ReservedAliases
 	shortScheme  string
 	shortDomain  string
@@ -61,12 +63,13 @@ type LinkService struct {
 // NewLinkService wires a LinkService. shortScheme/shortDomain come from
 // SHORT_SCHEME / SHORT_DOMAIN config and build every short URL — unless the
 // org has a primary VERIFIED custom domain, which then becomes the display
-// base. scanner vets every destination (creation + edits); reserved is the
-// alias blacklist (nil means the built-in categories only); abuseContact
-// (ABUSE_CONTACT config, may be empty) is appended to flagged-destination
-// errors so a false positive has an escalation path.
+// base. scanner vets every destination (creation + edits); policy bounds link
+// creation (wire limits.Unlimited{} unless the deployment supplies its own);
+// reserved is the alias blacklist (nil means the built-in categories only);
+// abuseContact (ABUSE_CONTACT config, may be empty) is appended to
+// flagged-destination errors so a false positive has an escalation path.
 func NewLinkService(links LinkStore, members MemberStore, domains DomainStore,
-	urlScanner URLScanner, reserved *ReservedAliases,
+	urlScanner URLScanner, policy limits.Policy, reserved *ReservedAliases,
 	shortScheme, shortDomain, abuseContact string) *LinkService {
 	if reserved == nil {
 		reserved = NewReservedAliases(nil)
@@ -74,7 +77,7 @@ func NewLinkService(links LinkStore, members MemberStore, domains DomainStore,
 
 	return &LinkService{
 		links: links, members: members, domains: domains,
-		scanner: urlScanner, reserved: reserved,
+		scanner: urlScanner, policy: policy, reserved: reserved,
 		shortScheme: shortScheme, shortDomain: shortDomain, abuseContact: abuseContact,
 	}
 }
@@ -151,6 +154,15 @@ func (s *LinkService) shorten(ctx *gofr.Context, orgID int64, userID, apiKeyID *
 
 	if strings.EqualFold(dest.Host, s.shortDomain) {
 		return s.existingShortURL(ctx, orgID, viewerID, dest)
+	}
+
+	// The deployment's limits.Policy gates creation on BOTH auth paths (JWT
+	// and API key — this is their shared choke point) before any store
+	// access; userID 0 marks the key path. Creation only: edits (alias,
+	// deep link, destination) are never policy-checked, and neither is the
+	// already-short echo above (it creates nothing).
+	if err := s.policy.CanCreateLink(ctx, orgID, viewerID); err != nil {
+		return nil, limitError(err)
 	}
 
 	// Scan before dedupe: a flagged destination is refused even when an

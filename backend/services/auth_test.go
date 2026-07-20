@@ -13,6 +13,7 @@ import (
 
 	"github.com/opengittr/ogtr/backend/apierrors"
 	"github.com/opengittr/ogtr/backend/auth"
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -28,6 +29,12 @@ type authMocks struct {
 }
 
 func newAuthService(t *testing.T) (*AuthService, authMocks, *gofr.Context) {
+	t.Helper()
+
+	return newAuthServiceWithPolicy(t, limits.Unlimited{})
+}
+
+func newAuthServiceWithPolicy(t *testing.T, policy limits.Policy) (*AuthService, authMocks, *gofr.Context) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
@@ -50,7 +57,7 @@ func newAuthService(t *testing.T) (*AuthService, authMocks, *gofr.Context) {
 		auth.ProviderDev:    auth.NewDevProvider(),
 	}
 
-	return NewAuthService(providers, m.tokens, m.users, m.orgs, m.members, m.invites), m, ctx
+	return NewAuthService(providers, m.tokens, m.users, m.orgs, m.members, m.invites, policy), m, ctx
 }
 
 func pairFor(userID, orgID int64) models.TokenPair {
@@ -64,11 +71,11 @@ func TestAuthService_Login(t *testing.T) {
 	membership := models.OrgMembership{OrgID: 3, Name: "Acme", Slug: "acme", Role: models.RoleOwner}
 
 	tests := []struct {
-		desc        string
-		setup       func(m authMocks)
-		wantErr     error
-		wantOrgs    int
-		wantActive  int64
+		desc       string
+		setup      func(m authMocks)
+		wantErr    error
+		wantOrgs   int
+		wantActive int64
 	}{
 		{
 			desc: "existing user with membership",
@@ -376,9 +383,9 @@ func TestAuthService_SwitchOrg(t *testing.T) {
 
 func TestSplitEmail(t *testing.T) {
 	tests := []struct {
-		in          string
-		wantLocal   string
-		wantDomain  string
+		in         string
+		wantLocal  string
+		wantDomain string
 	}{
 		{in: "a@b.co", wantLocal: "a", wantDomain: "b.co"},
 		{in: "no-at-sign", wantLocal: "", wantDomain: ""},

@@ -13,10 +13,17 @@ import (
 	"gofr.dev/pkg/gofr"
 	"gofr.dev/pkg/gofr/container"
 
+	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
 func newAPIKeyService(t *testing.T) (*APIKeyService, *MockAPIKeyStore, *gofr.Context) {
+	t.Helper()
+
+	return newAPIKeyServiceWithPolicy(t, limits.Unlimited{})
+}
+
+func newAPIKeyServiceWithPolicy(t *testing.T, policy limits.Policy) (*APIKeyService, *MockAPIKeyStore, *gofr.Context) {
 	t.Helper()
 
 	keys := NewMockAPIKeyStore(gomock.NewController(t))
@@ -24,7 +31,7 @@ func newAPIKeyService(t *testing.T) (*APIKeyService, *MockAPIKeyStore, *gofr.Con
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-	return NewAPIKeyService(keys), keys, ctx
+	return NewAPIKeyService(keys, policy), keys, ctx
 }
 
 func enabledKey(id int64) *models.APIKey {

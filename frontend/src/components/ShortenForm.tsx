@@ -7,10 +7,10 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
-import { ApiError, endpoints } from "../lib/api";
+import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
 import type { LinkType, ShortURL } from "../lib/types";
 import { LinkActionOverlays, QRPanel, type LinkAction } from "./LinkActions";
-import { CopyButton, ErrorBanner, Spinner, secondaryButtonClass } from "./ui";
+import { CopyButton, ErrorBanner, NoticeBanner, Spinner, secondaryButtonClass } from "./ui";
 
 export default function ShortenForm({
   onCreated,
@@ -29,6 +29,8 @@ export default function ShortenForm({
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // LIMIT_REACHED denial: the server's message, shown verbatim as a notice.
+  const [limitNotice, setLimitNotice] = useState("");
   const [created, setCreated] = useState<ShortURL | null>(null);
 
   // Success-card overlays (scoped to the just-created link).
@@ -43,6 +45,7 @@ export default function ShortenForm({
 
     setBusy(true);
     setError("");
+    setLimitNotice("");
     setCreated(null);
     setAction(null);
 
@@ -62,11 +65,15 @@ export default function ShortenForm({
       setUtmCampaign("");
       onCreated?.(link);
     } catch (err: unknown) {
-      setError(
-        err instanceof ApiError && err.message
-          ? err.message
-          : "Could not shorten this URL. Please try again.",
-      );
+      if (err instanceof ApiError && err.code === LIMIT_REACHED) {
+        setLimitNotice(err.message);
+      } else {
+        setError(
+          err instanceof ApiError && err.message
+            ? err.message
+            : "Could not shorten this URL. Please try again.",
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -185,6 +192,7 @@ export default function ShortenForm({
       )}
 
       {error && <ErrorBanner message={error} />}
+      {limitNotice && <NoticeBanner message={limitNotice} />}
 
       {created && (
         <div

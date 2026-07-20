@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -53,12 +52,7 @@ func (s *OrgService) Create(ctx *gofr.Context, creatorID int64, name, autoJoinDo
 	}
 
 	if err := s.policy.CanCreateOrg(ctx, creatorID); err != nil {
-		var denial *limits.Denial
-		if errors.As(err, &denial) {
-			return nil, apierrors.LimitReached(denial.Error())
-		}
-
-		return nil, err
+		return nil, limitError(err)
 	}
 
 	slug, err := s.uniqueSlug(ctx, name)
@@ -165,7 +159,11 @@ func (s *OrgService) RemoveMember(ctx *gofr.Context, orgID, actorID, targetID in
 }
 
 // CreateInvite invites an email into the org. OWNER only. The invite converts
-// to membership automatically on the invitee's next login.
+// to membership automatically on the invitee's next login. The deployment's
+// limits.Policy is consulted (CanAddMember) after input validation and before
+// any store access: a denial is 403 LIMIT_REACHED. The same check runs again
+// when the membership is actually created on the login path (AuthService), so
+// an invite that slipped in before the org filled up cannot overshoot.
 func (s *OrgService) CreateInvite(ctx *gofr.Context, orgID, actorID int64, email string) (*models.Invite, error) {
 	if err := s.requireOwner(ctx, orgID, actorID); err != nil {
 		return nil, err
@@ -175,6 +173,10 @@ func (s *OrgService) CreateInvite(ctx *gofr.Context, orgID, actorID int64, email
 
 	if local, domain := splitEmail(email); local == "" || domain == "" {
 		return nil, apierrors.Unprocessable("invalid email address")
+	}
+
+	if err := s.policy.CanAddMember(ctx, orgID); err != nil {
+		return nil, limitError(err)
 	}
 
 	user, err := s.users.GetByEmail(ctx, email)
