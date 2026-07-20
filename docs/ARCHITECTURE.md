@@ -9,7 +9,7 @@ including the settled design decisions and per-phase implementation notes.
 backend     Go + Gofr + MySQL. One service, two route groups:
                      GET /{code}        → redirect + click recording (public)
                      /api/v1/*          → management API (JWT or API-key auth)
-frontend       React + Tailwind SPA (dashboard). CSR, served by a tiny Go static server.
+frontend       React + Tailwind SPA (dashboard). CSR, served by gostatic.
 k8s/               All deployment manifests.
 ```
 

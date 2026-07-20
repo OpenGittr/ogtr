@@ -1,5 +1,6 @@
 # ogtr dashboard SPA (frontend) — served on the APP_DOMAIN host
-# (ingress.yaml) by a tiny Go SPA-fallback server on :8000 (no nginx, no SSR).
+# (ingress.yaml) by gostatic (opengittr/gostatic) on :8000
+# (no nginx, no SSR). Probes hit gostatic's gofr well-known health endpoint.
 #
 # VITE_* values are baked at image BUILD time (they ship in the JS bundle and
 # are not secrets):
@@ -38,13 +39,13 @@ spec:
             cpu: "50m"
         livenessProbe:
           httpGet:
-            path: /
+            path: /.well-known/alive
             port: 8000
           initialDelaySeconds: 10
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /
+            path: /.well-known/alive
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5

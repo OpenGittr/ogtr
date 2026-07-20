@@ -1,7 +1,7 @@
 # frontend — ogtr dashboard
 
-React 19 + Tailwind 4 + Vite SPA (CSR only, served as static files in production by the
-tiny Go SPA-fallback server in `server/main.go` — no SSR, no nginx; see the Dockerfile).
+React 19 + Tailwind 4 + Vite SPA (CSR only, served as static files in production by
+[gostatic](https://github.com/opengittr/gostatic) — no SSR, no nginx; see the Dockerfile).
 Port **5800** (strict) from the project's 5800–5899 block.
 
 ## Run locally

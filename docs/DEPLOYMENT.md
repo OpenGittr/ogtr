@@ -26,11 +26,11 @@ docker build --platform linux/amd64 \
 docker push <registry>/ogtr-server:<tag>   # …and the app image
 ```
 
-Serving details: the app image runs a tiny Go static server
-(`server/main.go`). It serves the built files with the right
-cache policy (`index.html` as `Cache-Control: no-cache`, hashed `/assets/*` as
-immutable) and falls back to `index.html` on client-side routes.
-No nginx anywhere.
+Serving details: the app image is built on
+[gostatic](https://github.com/opengittr/gostatic), which serves the built
+files with the right cache policy by default (`index.html` as
+`Cache-Control: no-cache`, hashed `/assets/*` as immutable) and falls back to
+`index.html` on client-side routes. No nginx anywhere.
 
 ## 2. Kubernetes walkthrough
 
