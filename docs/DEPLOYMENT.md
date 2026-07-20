@@ -83,9 +83,11 @@ Every backend env var (ARCHITECTURE.md §7) and where it lives:
 | `SHORT_SCHEME` | configmap | `https` |
 | `APP_URL` | configmap | SPA origin — OAuth redirect target |
 | `ACCESS_CONTROL_ALLOW_ORIGIN` | configmap | = `APP_URL`; without it gofr CORS defaults to `*` |
-| `AUTH_PROVIDERS` | configmap | keep it `google` — **never enable the `dev` provider in production** (it lets anyone sign in as any identity) |
+| `AUTH_PROVIDERS` | configmap | `google`, optionally `google,microsoft` — **never enable the `dev` provider in production** (it lets anyone sign in as any identity) |
 | `GOOGLE_CLIENT_ID` | **secret** (`google-client-id`) | OAuth Web client; app domain must be an authorized JS origin |
 | `GOOGLE_JWKS_URL` | — (unset) | defaults to Google's published JWKS; only tests override |
+| `MICROSOFT_CLIENT_ID` | deployment config | Azure app registration client ID; deployments that add `microsoft` to `AUTH_PROVIDERS` supply it via their own config. Unset (with `microsoft` absent) = Microsoft sign-in fully dark: no button, endpoint 404s |
+| `MICROSOFT_JWKS_URL` | — (unset) | defaults to Microsoft's published `common` v2.0 JWKS; only tests override |
 | `JWT_SIGNING_KEY` | **secret** (`jwt-signing-key`) | required — server refuses to start without it |
 | `ACCESS_TOKEN_TTL` | configmap | Go duration, default `15m` |
 | `REFRESH_TOKEN_TTL` | configmap | Go duration, default `720h` |

@@ -7,6 +7,10 @@
 //   Client-ID precedence: the server-provided value wins; the build-time
 //   VITE_GOOGLE_CLIENT_ID is only a fallback (kept for older deployments and
 //   for the offline fallback below).
+// - Microsoft: no external script — the SPA runs the PKCE authorization-code
+//   flow itself (lib/microsoftAuth.ts): redirect to login.microsoftonline.com,
+//   return to /auth/microsoft, exchange the code for an ID token there and
+//   POST it to /api/v1/auth/microsoft. Client ID comes from the server only.
 // - Dev: a plain name+email form for local evaluation (no Google setup
 //   needed); POST /api/v1/auth/dev. Rendered only when the server enables it,
 //   under an unmissable amber warning.
@@ -21,6 +25,7 @@ import { useAuth } from "../auth/AuthContext";
 import Logo from "../components/Logo";
 import { ErrorBanner, FullPageSpinner, Spinner } from "../components/ui";
 import { endpoints } from "../lib/api";
+import { beginMicrosoftLogin } from "../lib/microsoftAuth";
 import type { AuthProvidersInfo } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -107,7 +112,9 @@ export default function LoginPage() {
       .catch(() => {
         // Server unreachable or pre-providers-endpoint: assume google with
         // the build-time client ID so the page still renders something.
-        if (!cancelled) setProvidersInfo({ providers: ["google"], google_client_id: "" });
+        if (!cancelled) {
+          setProvidersInfo({ providers: ["google"], google_client_id: "", microsoft_client_id: "" });
+        }
       });
 
     return () => {
@@ -117,9 +124,12 @@ export default function LoginPage() {
 
   const providers = providersInfo?.providers ?? [];
   const googleEnabled = providers.includes("google");
+  const microsoftEnabled = providers.includes("microsoft");
   const devEnabled = providers.includes("dev");
   // Server-provided client ID wins; VITE_GOOGLE_CLIENT_ID is the fallback.
   const googleClientId = providersInfo?.google_client_id || FALLBACK_GOOGLE_CLIENT_ID;
+  // Microsoft has no build-time fallback: the server is the single source.
+  const microsoftClientId = providersInfo?.microsoft_client_id ?? "";
 
   // busy is a dependency: the button container unmounts while a sign-in is in
   // flight, so the GIS button must be re-rendered after a failed attempt.
@@ -158,6 +168,17 @@ export default function LoginPage() {
       cancelled = true;
     };
   }, [status, googleEnabled, googleClientId, busy, loginWithGoogle]);
+
+  // Kicks off the PKCE redirect; only failures to *start* (e.g. storage or
+  // WebCrypto unavailable) surface here — the page otherwise navigates away.
+  const startMicrosoft = () => {
+    setBusy(true);
+    setError("");
+    beginMicrosoftLogin(microsoftClientId, from).catch((err: unknown) => {
+      setBusy(false);
+      setError(err instanceof Error ? err.message : "Could not start Microsoft sign-in.");
+    });
+  };
 
   const submitDev = (event: FormEvent) => {
     event.preventDefault();
@@ -231,7 +252,40 @@ export default function LoginPage() {
                     </div>
                   ))}
 
-                {googleEnabled && devEnabled && (
+                {microsoftEnabled &&
+                  (microsoftClientId ? (
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={startMicrosoft}
+                        data-testid="microsoft-signin"
+                        className="flex w-[280px] items-center justify-center gap-3 rounded border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                      >
+                        {/* Microsoft four-square mark */}
+                        <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
+                          <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                          <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                          <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                          <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+                        </svg>
+                        Sign in with Microsoft
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                      data-testid="ms-not-configured"
+                    >
+                      <p className="font-medium">Microsoft sign-in is not configured.</p>
+                      <p className="mt-1">
+                        Set <code className="font-mono">MICROSOFT_CLIENT_ID</code> in the
+                        backend config (served to this page automatically) and restart the
+                        server.
+                      </p>
+                    </div>
+                  ))}
+
+                {(googleEnabled || microsoftEnabled) && devEnabled && (
                   <div className="flex items-center gap-3" aria-hidden="true">
                     <span className="h-px flex-1 bg-slate-200" />
                     <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -291,7 +345,7 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {!googleEnabled && !devEnabled && (
+                {!googleEnabled && !microsoftEnabled && !devEnabled && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     No sign-in methods are enabled on this server. Set{" "}
                     <code className="font-mono">AUTH_PROVIDERS</code> in the backend config.

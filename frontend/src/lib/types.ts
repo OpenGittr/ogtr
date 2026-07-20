@@ -52,16 +52,17 @@ export interface TokenPair {
 
 /**
  * GET /api/v1/auth/providers response: which sign-in methods this deployment
- * offers ("google", "dev"). google_client_id is empty unless google is
- * enabled; when set it takes precedence over the VITE_GOOGLE_CLIENT_ID
- * build-time fallback.
+ * offers ("google", "microsoft", "dev"). The client IDs are empty unless the
+ * matching provider is enabled; a set google_client_id takes precedence over
+ * the VITE_GOOGLE_CLIENT_ID build-time fallback.
  */
 export interface AuthProvidersInfo {
   providers: string[] | null;
   google_client_id: string;
+  microsoft_client_id: string;
 }
 
-/** POST /api/v1/auth/google and /auth/dev response. orgs: [] + active_org_id: 0 = "no org yet". */
+/** POST /api/v1/auth/{google,microsoft} and /auth/dev response. orgs: [] + active_org_id: 0 = "no org yet". */
 export interface AuthResult extends TokenPair {
   user: User;
   orgs: OrgMembership[] | null;

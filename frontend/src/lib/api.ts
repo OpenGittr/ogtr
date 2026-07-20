@@ -279,6 +279,14 @@ export const endpoints = {
       auth: false,
     }),
 
+  /** Microsoft ID token (from the SPA PKCE flow) → ogtr session tokens. */
+  microsoftLogin: (idToken: string) =>
+    api<AuthResult>("/api/v1/auth/microsoft", {
+      method: "POST",
+      body: { id_token: idToken },
+      auth: false,
+    }),
+
   /** Dev-provider sign-in — only functional when the server enables "dev". */
   devLogin: (email: string, name: string) =>
     api<AuthResult>("/api/v1/auth/dev", {

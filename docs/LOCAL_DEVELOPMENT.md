@@ -107,6 +107,32 @@ Tests and E2E scripts avoid real Google entirely by pointing
 `GOOGLE_JWKS_URL` at a local JWKS server and minting RS256 tokens against it;
 the verification code path is identical.
 
+## Microsoft sign-in (local)
+
+Optional, like Google: enable it only to test the real "Sign in with
+Microsoft" button. The SPA runs the OAuth authorization-code + PKCE flow
+itself (no MSAL); the backend verifies the resulting ID token
+(audience = `MICROSOFT_CLIENT_ID`, keys from `MICROSOFT_JWKS_URL`, default
+Microsoft's published `common` v2.0 set).
+
+1. In the Azure portal (Microsoft Entra ID → App registrations) create a new
+   registration.
+   - **Supported account types**: "Accounts in any organizational directory
+     and personal Microsoft accounts" (work/school + personal).
+   - **Platform**: add a **Single-page application** platform (this is what
+     enables the CORS token exchange PKCE needs — *not* "Web").
+   - **Redirect URIs** (on the SPA platform): `http://localhost:5800/auth/microsoft`
+     for local dev, plus `https://<your-app-origin>/auth/microsoft` for each
+     deployed dashboard origin.
+2. Put the registration's **Application (client) ID** in
+   `backend/configs/.local.env` (`MICROSOFT_CLIENT_ID=...`) and add
+   `microsoft` to `AUTH_PROVIDERS`. The SPA gets the client ID from
+   `GET /api/v1/auth/providers`; there is no build-time fallback.
+
+Tests avoid real Microsoft entirely by pointing `MICROSOFT_JWKS_URL` at a
+local JWKS server and minting RS256 tokens against it; the verification code
+path is identical.
+
 ## GeoIP (optional, local)
 
 Location targeting, click geo and city autocomplete need MaxMind GeoLite2

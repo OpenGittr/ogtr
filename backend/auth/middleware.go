@@ -15,8 +15,9 @@ const APIKeyHeader = "X-API-Key"
 // Middleware returns the Gofr HTTP middleware that guards the management API.
 //
 // Guarded: every /api/* route. Exempt: POST /api/v1/auth/google,
-// POST /api/v1/auth/dev and POST /api/v1/auth/refresh (they bootstrap a
-// session), GET /api/v1/auth/providers (the SPA asks it before any session
+// POST /api/v1/auth/microsoft, POST /api/v1/auth/dev and
+// POST /api/v1/auth/refresh (they bootstrap a session),
+// GET /api/v1/auth/providers (the SPA asks it before any session
 // exists), GET /api/v1/resolve
 // (resolution never requires login, FEATURES.md §2.1), plus everything
 // outside /api/ — Gofr's well-known health/alive/openapi paths, favicon, and
@@ -92,7 +93,8 @@ func isAuthExempt(r *http.Request) bool {
 	}
 
 	if r.Method == http.MethodPost &&
-		(path == "/api/v1/auth/google" || path == "/api/v1/auth/dev" || path == "/api/v1/auth/refresh") {
+		(path == "/api/v1/auth/google" || path == "/api/v1/auth/microsoft" ||
+			path == "/api/v1/auth/dev" || path == "/api/v1/auth/refresh") {
 		return true
 	}
 

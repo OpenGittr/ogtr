@@ -52,7 +52,7 @@ func newJWKS(t *testing.T, pub *rsa.PublicKey, kid string) *httptest.Server {
 	return srv
 }
 
-func signGoogleToken(t *testing.T, key *rsa.PrivateKey, kid string, claims jwt.MapClaims) string {
+func signRS256Token(t *testing.T, key *rsa.PrivateKey, kid string, claims jwt.MapClaims) string {
 	t.Helper()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
@@ -101,44 +101,44 @@ func TestGoogleProvider_Verify(t *testing.T) {
 	}{
 		{
 			desc:       "valid token",
-			credential: signGoogleToken(t, key, testKid, googleClaimsFor("alice@example.com", "Alice")),
+			credential: signRS256Token(t, key, testKid, googleClaimsFor("alice@example.com", "Alice")),
 			want:       Identity{Email: "alice@example.com", Name: "Alice"},
 		},
 		{
 			desc:       "wrong audience",
-			credential: signGoogleToken(t, key, testKid, override(func(c jwt.MapClaims) { c["aud"] = "someone-else" })),
+			credential: signRS256Token(t, key, testKid, override(func(c jwt.MapClaims) { c["aud"] = "someone-else" })),
 			wantErr:    errInvalidGoogleToken.Error(),
 		},
 		{
 			desc:       "wrong issuer",
-			credential: signGoogleToken(t, key, testKid, override(func(c jwt.MapClaims) { c["iss"] = "https://evil.example" })),
+			credential: signRS256Token(t, key, testKid, override(func(c jwt.MapClaims) { c["iss"] = "https://evil.example" })),
 			wantErr:    errInvalidGoogleToken.Error(),
 		},
 		{
 			desc: "expired",
-			credential: signGoogleToken(t, key, testKid, override(func(c jwt.MapClaims) {
+			credential: signRS256Token(t, key, testKid, override(func(c jwt.MapClaims) {
 				c["exp"] = time.Now().Add(-time.Hour).Unix()
 			})),
 			wantErr: errInvalidGoogleToken.Error(),
 		},
 		{
 			desc:       "email not verified",
-			credential: signGoogleToken(t, key, testKid, override(func(c jwt.MapClaims) { c["email_verified"] = false })),
+			credential: signRS256Token(t, key, testKid, override(func(c jwt.MapClaims) { c["email_verified"] = false })),
 			wantErr:    errInvalidGoogleToken.Error(),
 		},
 		{
 			desc:       "missing email",
-			credential: signGoogleToken(t, key, testKid, override(func(c jwt.MapClaims) { delete(c, "email") })),
+			credential: signRS256Token(t, key, testKid, override(func(c jwt.MapClaims) { delete(c, "email") })),
 			wantErr:    errInvalidGoogleToken.Error(),
 		},
 		{
 			desc:       "unknown kid",
-			credential: signGoogleToken(t, key, "unknown-kid", googleClaimsFor("alice@example.com", "Alice")),
+			credential: signRS256Token(t, key, "unknown-kid", googleClaimsFor("alice@example.com", "Alice")),
 			wantErr:    errInvalidGoogleToken.Error(),
 		},
 		{
 			desc:       "signed by a different key",
-			credential: signGoogleToken(t, otherKey, testKid, googleClaimsFor("alice@example.com", "Alice")),
+			credential: signRS256Token(t, otherKey, testKid, googleClaimsFor("alice@example.com", "Alice")),
 			wantErr:    errInvalidGoogleToken.Error(),
 		},
 		{
@@ -203,11 +203,11 @@ func TestGoogleProvider_JWKSUnavailable(t *testing.T) {
 
 	provider := NewGoogleProvider(testClientID, srv.URL)
 
-	_, err = provider.Verify(testCtx(t), signGoogleToken(t, key, testKid, googleClaimsFor("a@b.co", "A")))
+	_, err = provider.Verify(testCtx(t), signRS256Token(t, key, testKid, googleClaimsFor("a@b.co", "A")))
 	assert.Equal(t, errInvalidGoogleToken, err)
 }
 
 func TestNewGoogleProvider_DefaultJWKSURL(t *testing.T) {
 	provider := NewGoogleProvider(testClientID, "")
-	assert.Equal(t, DefaultGoogleJWKSURL, provider.jwksURL)
+	assert.Equal(t, DefaultGoogleJWKSURL, provider.jwks.url)
 }

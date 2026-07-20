@@ -17,6 +17,7 @@ import LinkDetailPage from "./pages/LinkDetailPage";
 import LinksPage from "./pages/LinksPage";
 import LoginPage from "./pages/LoginPage";
 import MembersPage from "./pages/MembersPage";
+import MicrosoftCallbackPage from "./pages/MicrosoftCallbackPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import OnboardingPage from "./pages/OnboardingPage";
 
@@ -45,6 +46,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* OAuth return leg of the Microsoft PKCE flow (registered redirect URI). */}
+      <Route path="/auth/microsoft" element={<MicrosoftCallbackPage />} />
 
       <Route
         path="/onboarding"

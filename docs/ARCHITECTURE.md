@@ -37,8 +37,8 @@ serve/display its short links on it.
   (`GET /{code}`), management API under `/api/v1/*`. Custom aliases are checked against a
   reserved-word blacklist (`api`, `.well-known`, `metrics`, `login`, etc.) so they can never
   shadow service routes.
-- **Auth**: Google login (OIDC) behind a pluggable auth provider boundary (§5) so other
-  identity providers can be added without touching the rest of the login flow.
+- **Auth**: Google and Microsoft login (OIDC) behind a pluggable auth provider boundary (§5)
+  so other identity providers can be added without touching the rest of the login flow.
 - **Open core**: billing/plan logic lives outside this repo; never add commercial features,
   license checks, or plan logic here. The only such extension point is the neutral
   `limits.Policy` seam (§8 "Extension seam: LimitsPolicy"), default unlimited.
@@ -116,8 +116,9 @@ from the path**; Gofr wraps responses in `data`; errors use Gofr conventions.
 ### Auth & session
 
 The SPA asks the server which sign-in methods exist (`AUTH_PROVIDERS`, §5) and renders them.
-For Google it exchanges a client-side Google ID token; for the dev provider (local evaluation
-only) it submits a plain name+email. Either way ogtr issues its own JWTs (access +
+For Google it exchanges a client-side Google ID token; for Microsoft it runs the PKCE
+authorization-code flow in the SPA and submits the resulting ID token; for the dev provider
+(local evaluation only) it submits a plain name+email. Either way ogtr issues its own JWTs (access +
 refresh) — the provider credential is only an identity proof at the boundary.
 
 ```
@@ -457,6 +458,17 @@ Which providers are live is deployment config: `AUTH_PROVIDERS` (comma-separated
   (`GOOGLE_JWKS_URL`, defaulting to Google's published set) so tests and local E2E can point at
   a local JWKS server — the verification logic is identical in tests and prod; there is no
   hidden bypass inside it.
+- **`microsoft`** — `MicrosoftProvider` verifies Microsoft identity platform (v2.0) ID
+  tokens from the multi-tenant `common` endpoint (work/school **and** personal accounts):
+  RS256 signature against the JWKS (`MICROSOFT_JWKS_URL`, defaulting to the published
+  `common` v2.0 key set, overridable only so tests can run a local JWKS server — same
+  no-bypass rule as Google), audience = `MICROSOFT_CLIENT_ID`, expiry/not-before, and the
+  **per-tenant issuer pattern**: the issuer must be exactly
+  `https://login.microsoftonline.com/{tid}/v2.0` with `{tid}` equal to the token's own `tid`
+  claim (checked structurally — exact prefix, exact suffix, tid segment match). Identity
+  email is the `email` claim, falling back to `preferred_username` only when it parses as a
+  bare email address (it can legally be a phone number or non-routeable UPN). The SPA obtains
+  the ID token itself via a hand-rolled PKCE authorization-code flow (no MSAL dependency).
 - **`dev`** — `DevProvider`, the zero-setup evaluation path: accepts any
   well-formed email + non-empty name with **no credential proof** (the "credential" is the
   JSON-encoded email/name pair from `POST /auth/dev`). Exists so a fresh install can be tried
@@ -504,9 +516,11 @@ DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_DIALECT=mysql
 SHORT_DOMAIN                      e.g. links.example.com  (link generation + already-short detection)
 SHORT_SCHEME                      https (default)
 APP_URL                           SPA origin, for CORS + OAuth redirect
-AUTH_PROVIDERS                    enabled sign-in methods: google, dev (default google; §5)
+AUTH_PROVIDERS                    enabled sign-in methods: google, microsoft, dev (default google; §5)
 GOOGLE_CLIENT_ID                  Google sign-in audience
 GOOGLE_JWKS_URL                   Google signing keys (default: Google's; overridden in tests)
+MICROSOFT_CLIENT_ID               Microsoft sign-in audience (Azure app client ID)
+MICROSOFT_JWKS_URL                Microsoft signing keys (default: Microsoft's; overridden in tests)
 JWT_SIGNING_KEY                   ogtr session tokens (required; server refuses to start without it)
 ACCESS_TOKEN_TTL                  access-token lifetime (Go duration, default 15m)
 REFRESH_TOKEN_TTL                 refresh-token lifetime (Go duration, default 720h)

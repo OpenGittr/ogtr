@@ -217,6 +217,17 @@ func TestBuildProviders(t *testing.T) {
 		assert.Contains(t, providers, "dev")
 	})
 
+	t.Run("microsoft is constructed when configured", func(t *testing.T) {
+		t.Setenv("AUTH_PROVIDERS", "google,microsoft")
+		t.Setenv("MICROSOFT_CLIENT_ID", "ms-client-id")
+
+		providers, names, err := buildProviders(newTestApp(t), nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"google", "microsoft"}, names)
+		assert.IsType(t, &auth.MicrosoftProvider{}, providers["microsoft"])
+	})
+
 	t.Run("extra with colliding name replaces built-in without duplicating", func(t *testing.T) {
 		extra := map[string]auth.IdentityProvider{"dev": stubProvider{}}
 

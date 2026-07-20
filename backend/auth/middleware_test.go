@@ -44,6 +44,10 @@ func TestMiddleware(t *testing.T) {
 			wantStatus: http.StatusOK, wantReached: true,
 		},
 		{
+			desc: "microsoft login is exempt", method: http.MethodPost, path: "/api/v1/auth/microsoft",
+			wantStatus: http.StatusOK, wantReached: true,
+		},
+		{
 			desc: "dev login is exempt", method: http.MethodPost, path: "/api/v1/auth/dev",
 			wantStatus: http.StatusOK, wantReached: true,
 		},

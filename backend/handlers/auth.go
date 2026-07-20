@@ -18,20 +18,25 @@ type AuthHandler struct {
 	// providers preserves AUTH_PROVIDERS order for GET /auth/providers.
 	providers []string
 	enabled   map[string]bool
-	// googleClientID is served to the SPA so it needs no build-time copy of
-	// the client ID (client IDs are public identifiers, not secrets).
-	googleClientID string
+	// googleClientID / microsoftClientID are served to the SPA so it needs no
+	// build-time copy of the client IDs (client IDs are public identifiers,
+	// not secrets).
+	googleClientID    string
+	microsoftClientID string
 }
 
 // NewAuthHandler wires an AuthHandler. providers is the validated
 // AUTH_PROVIDERS list (auth.ParseProviders).
-func NewAuthHandler(authSvc AuthService, providers []string, googleClientID string) *AuthHandler {
+func NewAuthHandler(authSvc AuthService, providers []string, googleClientID, microsoftClientID string) *AuthHandler {
 	enabled := make(map[string]bool, len(providers))
 	for _, p := range providers {
 		enabled[p] = true
 	}
 
-	return &AuthHandler{authSvc: authSvc, providers: providers, enabled: enabled, googleClientID: googleClientID}
+	return &AuthHandler{
+		authSvc: authSvc, providers: providers, enabled: enabled,
+		googleClientID: googleClientID, microsoftClientID: microsoftClientID,
+	}
 }
 
 var errProviderDisabled = apierrors.NotFound("this sign-in method is not enabled on this server")
@@ -43,19 +48,25 @@ type ProvidersResponse struct {
 	Providers []string `json:"providers"`
 	// GoogleClientID is empty unless the google provider is enabled.
 	GoogleClientID string `json:"google_client_id"`
+	// MicrosoftClientID is empty unless the microsoft provider is enabled.
+	MicrosoftClientID string `json:"microsoft_client_id"`
 }
 
 // Providers handles GET /api/v1/auth/providers (public).
 func (h *AuthHandler) Providers(*gofr.Context) (any, error) {
-	clientID := ""
+	googleID, microsoftID := "", ""
 	if h.enabled[auth.ProviderGoogle] {
-		clientID = h.googleClientID
+		googleID = h.googleClientID
 	}
 
-	return ProvidersResponse{Providers: h.providers, GoogleClientID: clientID}, nil
+	if h.enabled[auth.ProviderMicrosoft] {
+		microsoftID = h.microsoftClientID
+	}
+
+	return ProvidersResponse{Providers: h.providers, GoogleClientID: googleID, MicrosoftClientID: microsoftID}, nil
 }
 
-type googleLoginRequest struct {
+type idTokenLoginRequest struct {
 	IDToken string `json:"id_token"`
 }
 
@@ -66,7 +77,7 @@ func (h *AuthHandler) GoogleLogin(ctx *gofr.Context) (any, error) {
 		return nil, errProviderDisabled
 	}
 
-	var req googleLoginRequest
+	var req idTokenLoginRequest
 	if err := ctx.Bind(&req); err != nil {
 		return nil, gofrHTTP.ErrorInvalidParam{Params: []string{"body"}}
 	}
@@ -76,6 +87,27 @@ func (h *AuthHandler) GoogleLogin(ctx *gofr.Context) (any, error) {
 	}
 
 	return h.authSvc.Login(ctx, auth.ProviderGoogle, req.IDToken)
+}
+
+// MicrosoftLogin handles POST /api/v1/auth/microsoft. 404 when the microsoft
+// provider is not enabled. The SPA obtains the ID token itself via the PKCE
+// authorization-code flow against login.microsoftonline.com and posts it
+// here; from this point the flow is identical to Google.
+func (h *AuthHandler) MicrosoftLogin(ctx *gofr.Context) (any, error) {
+	if !h.enabled[auth.ProviderMicrosoft] {
+		return nil, errProviderDisabled
+	}
+
+	var req idTokenLoginRequest // same {id_token} shape for every OIDC provider
+	if err := ctx.Bind(&req); err != nil {
+		return nil, gofrHTTP.ErrorInvalidParam{Params: []string{"body"}}
+	}
+
+	if req.IDToken == "" {
+		return nil, gofrHTTP.ErrorMissingParam{Params: []string{"id_token"}}
+	}
+
+	return h.authSvc.Login(ctx, auth.ProviderMicrosoft, req.IDToken)
 }
 
 type devLoginRequest struct {

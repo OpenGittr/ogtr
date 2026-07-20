@@ -44,6 +44,8 @@ interface AuthContextValue extends AuthState {
   /** True when the last logout was forced by a rejected refresh token. */
   sessionExpired: boolean;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  /** Microsoft ID token (obtained by the SPA PKCE flow) → ogtr session. */
+  loginWithMicrosoft: (idToken: string) => Promise<void>;
   /** Dev-provider sign-in; only works when the server enables "dev". */
   loginWithDev: (email: string, name: string) => Promise<void>;
   createOrg: (name: string) => Promise<Org>;
@@ -135,6 +137,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [adoptAuthResult],
   );
 
+  const loginWithMicrosoft = useCallback(
+    async (idToken: string) => {
+      adoptAuthResult(await endpoints.microsoftLogin(idToken));
+    },
+    [adoptAuthResult],
+  );
+
   const loginWithDev = useCallback(
     async (email: string, name: string) => {
       adoptAuthResult(await endpoints.devLogin(email, name));
@@ -177,13 +186,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...state,
       sessionExpired,
       loginWithGoogle,
+      loginWithMicrosoft,
       loginWithDev,
       createOrg,
       switchOrg,
       refreshMe,
       logout,
     }),
-    [state, sessionExpired, loginWithGoogle, loginWithDev, createOrg, switchOrg, refreshMe, logout],
+    [
+      state,
+      sessionExpired,
+      loginWithGoogle,
+      loginWithMicrosoft,
+      loginWithDev,
+      createOrg,
+      switchOrg,
+      refreshMe,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

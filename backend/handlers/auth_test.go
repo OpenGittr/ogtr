@@ -14,10 +14,10 @@ import (
 	"github.com/opengittr/ogtr/backend/services"
 )
 
-// bothProviders builds an AuthHandler with google + dev enabled (the
-// .local.env evaluation setup).
+// bothProviders builds an AuthHandler with google + microsoft + dev enabled.
 func bothProviders(authSvc AuthService) *AuthHandler {
-	return NewAuthHandler(authSvc, []string{auth.ProviderGoogle, auth.ProviderDev}, "client-123")
+	return NewAuthHandler(authSvc,
+		[]string{auth.ProviderGoogle, auth.ProviderMicrosoft, auth.ProviderDev}, "client-123", "ms-client-123")
 }
 
 func TestAuthHandler_GoogleLogin(t *testing.T) {
@@ -82,7 +82,7 @@ func TestAuthHandler_GoogleLogin(t *testing.T) {
 
 			h := bothProviders(authSvc)
 			if tc.providers != nil {
-				h = NewAuthHandler(authSvc, tc.providers, "client-123")
+				h = NewAuthHandler(authSvc, tc.providers, "client-123", "ms-client-123")
 			}
 
 			ctx := newTestCtx(t, http.MethodPost, "/api/v1/auth/google", tc.body, nil, nil)
@@ -115,6 +115,91 @@ func assertStatus(t *testing.T, err error, want int) {
 
 	require.ErrorAs(t, err, &coded)
 	assert.Equal(t, want, coded.StatusCode())
+}
+
+func TestAuthHandler_MicrosoftLogin(t *testing.T) {
+	result := &services.AuthResult{
+		TokenPair:   models.TokenPair{AccessToken: "a", RefreshToken: "r"},
+		User:        &models.User{ID: 8},
+		Orgs:        []models.OrgMembership{},
+		ActiveOrgID: 0,
+	}
+
+	tests := []struct {
+		desc       string
+		body       string
+		providers  []string
+		setup      func(m *MockAuthService)
+		wantErr    bool
+		wantStatus int
+	}{
+		{
+			desc: "valid login",
+			body: `{"id_token":"tok"}`,
+			setup: func(m *MockAuthService) {
+				m.EXPECT().Login(gomock.Any(), auth.ProviderMicrosoft, "tok").Return(result, nil)
+			},
+		},
+		{
+			// The dark-launch proof: without "microsoft" in AUTH_PROVIDERS
+			// the endpoint answers 404 and never touches the service.
+			desc:       "microsoft disabled is a 404, service never called",
+			body:       `{"id_token":"tok"}`,
+			providers:  []string{auth.ProviderGoogle, auth.ProviderDev},
+			setup:      func(*MockAuthService) {},
+			wantErr:    true,
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			desc:    "missing id_token",
+			body:    `{}`,
+			setup:   func(*MockAuthService) {},
+			wantErr: true,
+		},
+		{
+			desc:    "malformed body",
+			body:    `{"id_token":`,
+			setup:   func(*MockAuthService) {},
+			wantErr: true,
+		},
+		{
+			desc: "provider rejection propagates",
+			body: `{"id_token":"bad"}`,
+			setup: func(m *MockAuthService) {
+				m.EXPECT().Login(gomock.Any(), auth.ProviderMicrosoft, "bad").
+					Return(nil, apierrors.Unauthorized("invalid microsoft id token"))
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			authSvc := NewMockAuthService(ctrl)
+			tc.setup(authSvc)
+
+			h := bothProviders(authSvc)
+			if tc.providers != nil {
+				h = NewAuthHandler(authSvc, tc.providers, "client-123", "ms-client-123")
+			}
+
+			ctx := newTestCtx(t, http.MethodPost, "/api/v1/auth/microsoft", tc.body, nil, nil)
+
+			got, err := h.MicrosoftLogin(ctx)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, got, "error responses must carry nil data so Gofr uses the error status code")
+				assertStatus(t, err, tc.wantStatus)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, result, got)
+		})
+	}
 }
 
 func TestAuthHandler_DevLogin(t *testing.T) {
@@ -178,7 +263,7 @@ func TestAuthHandler_DevLogin(t *testing.T) {
 
 			h := bothProviders(authSvc)
 			if tc.providers != nil {
-				h = NewAuthHandler(authSvc, tc.providers, "client-123")
+				h = NewAuthHandler(authSvc, tc.providers, "client-123", "ms-client-123")
 			}
 
 			ctx := newTestCtx(t, http.MethodPost, "/api/v1/auth/dev", tc.body, nil, nil)
@@ -201,10 +286,11 @@ func TestAuthHandler_DevLogin(t *testing.T) {
 
 func TestAuthHandler_Providers(t *testing.T) {
 	tests := []struct {
-		desc      string
-		providers []string
-		clientID  string
-		want      ProvidersResponse
+		desc       string
+		providers  []string
+		clientID   string
+		msClientID string
+		want       ProvidersResponse
 	}{
 		{
 			desc:      "google and dev with a client id",
@@ -230,12 +316,37 @@ func TestAuthHandler_Providers(t *testing.T) {
 			clientID:  "",
 			want:      ProvidersResponse{Providers: []string{"google"}, GoogleClientID: ""},
 		},
+		{
+			desc:       "microsoft enabled serves its client id",
+			providers:  []string{auth.ProviderGoogle, auth.ProviderMicrosoft},
+			clientID:   "client-123",
+			msClientID: "ms-client-123",
+			want: ProvidersResponse{
+				Providers:      []string{"google", "microsoft"},
+				GoogleClientID: "client-123", MicrosoftClientID: "ms-client-123",
+			},
+		},
+		{
+			// The dark-launch shape: a configured microsoft client id never
+			// leaks while the provider is not enabled.
+			desc:       "microsoft disabled never leaks its client id",
+			providers:  []string{auth.ProviderGoogle},
+			clientID:   "client-123",
+			msClientID: "ms-client-123",
+			want:       ProvidersResponse{Providers: []string{"google"}, GoogleClientID: "client-123"},
+		},
+		{
+			desc:       "microsoft enabled but unconfigured client id stays empty",
+			providers:  []string{auth.ProviderMicrosoft},
+			msClientID: "",
+			want:       ProvidersResponse{Providers: []string{"microsoft"}},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			h := NewAuthHandler(NewMockAuthService(ctrl), tc.providers, tc.clientID)
+			h := NewAuthHandler(NewMockAuthService(ctrl), tc.providers, tc.clientID, tc.msClientID)
 
 			ctx := newTestCtx(t, http.MethodGet, "/api/v1/auth/providers", "", nil, nil)
 

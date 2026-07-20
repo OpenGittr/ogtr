@@ -137,7 +137,8 @@ func setup(app *gofr.App, o *options) error {
 	// mock behind the same interface — the verification code is identical.
 	domainSvc := services.NewDomainService(domainStore, memberStore, net.DefaultResolver, policy, shortDomain)
 
-	authH := handlers.NewAuthHandler(authSvc, providerNames, app.Config.Get("GOOGLE_CLIENT_ID"))
+	authH := handlers.NewAuthHandler(authSvc, providerNames,
+		app.Config.Get("GOOGLE_CLIENT_ID"), app.Config.Get("MICROSOFT_CLIENT_ID"))
 	orgH := handlers.NewOrgHandler(orgSvc, authSvc)
 	linkH := handlers.NewLinkHandler(linkSvc, apiKeySvc, createLimiter)
 	ruleH := handlers.NewRuleHandler(ruleSvc, cities)
@@ -150,11 +151,12 @@ func setup(app *gofr.App, o *options) error {
 
 	app.UseMiddleware(auth.Middleware(tokens, o.exemptPaths...), visitor.Middleware(), handlers.CacheControl())
 
-	// Session (ARCHITECTURE.md §4). providers + google + dev + refresh are
-	// auth-exempt. The login routes are always registered; the handler
-	// answers 404 for providers not enabled.
+	// Session (ARCHITECTURE.md §4). providers + google + microsoft + dev +
+	// refresh are auth-exempt. The login routes are always registered; the
+	// handler answers 404 for providers not enabled.
 	app.GET("/api/v1/auth/providers", authH.Providers)
 	app.POST("/api/v1/auth/google", authH.GoogleLogin)
+	app.POST("/api/v1/auth/microsoft", authH.MicrosoftLogin)
 	app.POST("/api/v1/auth/dev", authH.DevLogin)
 	app.POST("/api/v1/auth/refresh", authH.Refresh)
 	app.GET("/api/v1/me", authH.Me)
@@ -292,6 +294,10 @@ func buildProviders(app *gofr.App, extra map[string]auth.IdentityProvider,
 			providers[name] = auth.NewGoogleProvider(
 				app.Config.Get("GOOGLE_CLIENT_ID"),
 				app.Config.GetOrDefault("GOOGLE_JWKS_URL", auth.DefaultGoogleJWKSURL))
+		case auth.ProviderMicrosoft:
+			providers[name] = auth.NewMicrosoftProvider(
+				app.Config.Get("MICROSOFT_CLIENT_ID"),
+				app.Config.GetOrDefault("MICROSOFT_JWKS_URL", auth.DefaultMicrosoftJWKSURL))
 		case auth.ProviderDev:
 			providers[name] = auth.NewDevProvider()
 

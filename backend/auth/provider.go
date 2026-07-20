@@ -13,8 +13,9 @@ type Identity struct {
 }
 
 // IdentityProvider verifies a provider-issued credential and returns the
-// proven identity. GoogleProvider ships today; future enterprise IdP
-// providers slot in behind the same interface. Everything after Verify
+// proven identity. GoogleProvider and MicrosoftProvider ship today; future
+// enterprise IdP providers slot in behind the same interface. Everything
+// after Verify
 // (JIT user creation, org resolution, ogtr JWT issuance) is
 // provider-independent.
 type IdentityProvider interface {

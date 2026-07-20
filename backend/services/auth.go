@@ -41,7 +41,8 @@ type AuthService struct {
 }
 
 // NewAuthService wires an AuthService. providers maps enabled provider names
-// (auth.ProviderGoogle, auth.ProviderDev) to their IdentityProvider — only
+// (auth.ProviderGoogle, auth.ProviderMicrosoft, auth.ProviderDev) to their
+// IdentityProvider — only
 // enabled providers are present, so a login via a disabled provider fails
 // with 404 even if a route somehow reaches the service. policy bounds
 // membership creation on the login path (invite acceptance, auto-join); wire

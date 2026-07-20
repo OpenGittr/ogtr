@@ -17,8 +17,13 @@ func TestParseProviders(t *testing.T) {
 		{desc: "unset defaults to google", raw: "", want: []string{"google"}},
 		{desc: "blank defaults to google", raw: "   ", want: []string{"google"}},
 		{desc: "google only", raw: "google", want: []string{"google"}},
+		{desc: "microsoft only", raw: "microsoft", want: []string{"microsoft"}},
 		{desc: "dev only", raw: "dev", want: []string{"dev"}},
 		{desc: "google and dev", raw: "google,dev", want: []string{"google", "dev"}},
+		{
+			desc: "all three", raw: "google,microsoft,dev",
+			want: []string{"google", "microsoft", "dev"},
+		},
 		{desc: "order preserved", raw: "dev,google", want: []string{"dev", "google"}},
 		{desc: "spaces and case are tolerated", raw: " Google , DEV ", want: []string{"google", "dev"}},
 		{desc: "duplicates collapse", raw: "google,google,dev", want: []string{"google", "dev"}},

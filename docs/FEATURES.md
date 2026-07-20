@@ -258,8 +258,12 @@ When a link has no explicit UTM parameters, they are inferred per click:
 
 - Bearer-token (JWT) auth middleware on all endpoints except: login, refresh, link resolution,
   health checks, metrics, and OpenAPI/swagger paths.
-- OAuth-based login (Google) through a pluggable auth provider boundary
+- OAuth-based login (Google, Microsoft) through a pluggable auth provider boundary
   (ARCHITECTURE.md §5) — additional identity providers slot in behind the same interface.
+- **Microsoft sign-in** (`AUTH_PROVIDERS=...,microsoft` + `MICROSOFT_CLIENT_ID`) accepts both
+  work/school and personal Microsoft accounts via the identity platform's multi-tenant
+  `common` endpoint; the SPA runs the PKCE authorization-code flow itself (no MSAL) and the
+  backend verifies the ID token (signature, audience, per-tenant issuer pattern).
 - Token refresh flow that enriches tokens with app-level claims (user ID, name).
 - **Just-in-time user provisioning** — first login auto-creates the user record from token
   claims (name, email), converts any pending invites, and applies org auto-join by email
