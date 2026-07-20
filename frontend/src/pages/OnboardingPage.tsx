@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+import Logo from "../components/Logo";
 import { ErrorBanner, NoticeBanner, Spinner } from "../components/ui";
 import { ApiError, LIMIT_REACHED } from "../lib/api";
 import { limitNoticeAction } from "../ext";
@@ -58,7 +59,7 @@ export default function OnboardingPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center">
-          <span className="text-xl font-semibold tracking-tight text-slate-900">ogtr</span>
+          <Logo withWordmark size="md" className="text-slate-900" />
         </div>
 
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

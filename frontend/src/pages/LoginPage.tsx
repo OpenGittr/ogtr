@@ -18,6 +18,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+import Logo from "../components/Logo";
 import { ErrorBanner, FullPageSpinner, Spinner } from "../components/ui";
 import { endpoints } from "../lib/api";
 import type { AuthProvidersInfo } from "../lib/types";
@@ -179,7 +180,8 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+          <Logo size="lg" className="mx-auto" />
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             ogtr
           </h1>
           <p className="mt-2 text-sm text-slate-400">

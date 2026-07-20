@@ -6,6 +6,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { extraNavItems } from "../ext";
+import Logo from "./Logo";
 import OrgSwitcher from "./OrgSwitcher";
 import { InitialAvatar } from "./ui";
 
@@ -92,8 +93,8 @@ export default function AppShell() {
     <div className="min-h-screen bg-slate-50">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col bg-slate-900 lg:flex">
-        <div className="flex h-16 items-center px-6">
-          <span className="text-lg font-semibold tracking-tight text-white">ogtr</span>
+        <div className="flex h-16 items-center px-5">
+          <Logo withWordmark className="text-white" />
         </div>
         <NavList />
         <SidebarFooter />
@@ -109,7 +110,7 @@ export default function AppShell() {
           />
           <div className="absolute inset-y-0 left-0 flex w-64 flex-col bg-slate-900 shadow-xl">
             <div className="flex h-16 items-center justify-between px-5">
-              <span className="text-lg font-semibold tracking-tight text-white">ogtr</span>
+              <Logo withWordmark className="text-white" />
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}

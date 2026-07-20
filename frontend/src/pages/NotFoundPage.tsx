@@ -3,6 +3,7 @@
 
 import { Link } from "react-router-dom";
 
+import Logo from "../components/Logo";
 import { usePageTitle } from "../lib/usePageTitle";
 
 export default function NotFoundPage() {
@@ -10,7 +11,8 @@ export default function NotFoundPage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
-      <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">404</p>
+      <Logo size="md" />
+      <p className="mt-6 text-sm font-semibold uppercase tracking-wide text-indigo-600">404</p>
       <h1 className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl">
         This page does not exist
       </h1>
