@@ -173,6 +173,34 @@ type UsageReader interface {
 	EventsThisMonth(ctx *gofr.Context, orgID int64) (int64, error)
 }
 
+// AdminStore is the instance-admin data-access dependency (stores.AdminStore):
+// the DELIBERATELY cross-org read queries behind /api/internal/* — the one
+// sanctioned exception to INV-6, reachable only through the ADMIN_API_TOKEN
+// gate. query values are raw search terms (LIKE-escaped inside the store);
+// since values bind as UTC date/datetime strings.
+type AdminStore interface {
+	ListUsers(ctx *gofr.Context, query string, limit, offset int) ([]models.AdminUser, error)
+	CountUsers(ctx *gofr.Context, query string) (int64, error)
+	UserOrgs(ctx *gofr.Context, userIDs []int64) (map[int64][]models.AdminUserOrg, error)
+	ListOrgs(ctx *gofr.Context, query string, limit, offset int) ([]models.AdminOrg, error)
+	CountOrgs(ctx *gofr.Context, query string) (int64, error)
+	OrgCounts(ctx *gofr.Context, orgIDs []int64, clicksSince string) (map[int64]models.AdminOrgCounts, error)
+	ListReports(ctx *gofr.Context, limit, offset int) ([]models.AdminReport, error)
+	CountReports(ctx *gofr.Context) (int64, error)
+	GetLink(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error)
+	SignupsPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error)
+	LinksCreatedPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error)
+	ClicksPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error)
+}
+
+// LinkStatusStore is the admin service's link-status dependency — the same
+// SetStatusByID write the periodic re-scan uses (stores.LinkStore satisfies
+// it), so operator disable/enable shares the abuse-status machinery exactly:
+// DISABLED_ABUSE serves the 410 page and records no clicks.
+type LinkStatusStore interface {
+	SetStatusByID(ctx *gofr.Context, id int64, status string) error
+}
+
 // RuleStore is the link_rules data-access dependency.
 type RuleStore interface {
 	Create(ctx *gofr.Context, r *models.Rule) (*models.Rule, error)

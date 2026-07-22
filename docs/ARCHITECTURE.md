@@ -48,7 +48,9 @@ serve/display its short links on it.
 ## 2. Data model (MySQL)
 
 All tables carry `org_id` except `users` and `orgs` themselves. Every query filters by `org_id`
-derived from the auth context — no exceptions (FEATURES.md INV-6).
+derived from the auth context (FEATURES.md INV-6). The single sanctioned exception is the
+instance admin API (§4 "Instance admin API"), whose queries are deliberately cross-org and
+gated by `ADMIN_API_TOKEN` instead of a session.
 
 ```
 orgs           id, name, slug, auto_join_domain (nullable), created_at
@@ -364,6 +366,56 @@ Implementation notes (phase 6):
   listed and keep `api_key_id` attribution on the links they created. "Rotation" =
   create a new key, disable the old one.
 
+### Instance admin API
+
+The operator surface of a deployment: a self-hoster (or the operations console of a hosted
+deployment) administering their own instance. Open-core functionality — instance
+administration, not commercial logic.
+
+```
+GET  /api/internal/users?query=&page=        users across all orgs (25/page) + their org
+                                             memberships and roles; query matches email/name
+GET  /api/internal/orgs?query=&page=         orgs (25/page) with aggregate counts: members,
+                                             links, clicks_30d, domains; query matches name/slug
+GET  /api/internal/reports?page=             abuse reports newest-first (25/page), each joined
+                                             with the reported link's live status + destination
+GET  /api/internal/links/{id}                operator link detail (any org): row + org_name +
+                                             creator_email (null for API-key-created links)
+POST /api/internal/links/{id}/disable        {reason?} → status DISABLED_ABUSE (410 page, no
+                                             clicks — identical to a re-scan disable)
+POST /api/internal/links/{id}/enable         status back to ACTIVE
+GET  /api/internal/stats/daily?days=30       per-day {date, signups, links_created, clicks}
+                                             (UTC days, zero-filled; default 30, max 90)
+```
+
+Design decisions:
+
+- **INV-6 carve-out.** These endpoints are DELIBERATELY cross-org — the one sanctioned
+  exception to "org-scoped everything". The compensating control is the token gate: nothing
+  under `/api/internal/` is reachable without the deployment's `ADMIN_API_TOKEN`. All the
+  cross-org queries live in one file (`stores/admin.go`) so the exception stays auditable.
+- **Config-gated dark** (the dev-provider pattern): `ADMIN_API_TOKEN` unset — the default —
+  makes every admin endpoint answer **404**. A stock deployment behaves as if the API did not
+  exist.
+- **Token gate, not JWT**: `auth.AdminTokenGate` middleware guards the `/api/internal/`
+  prefix; the request's `X-Admin-Token` header must equal `ADMIN_API_TOKEN`
+  (constant-time comparison over SHA-256 digests, so neither content nor length leaks through
+  timing). A missing or wrong token is also **404, not 401** — a prober without the token
+  cannot distinguish a deployment that has the API enabled from one that does not. The JWT
+  middleware exempts the prefix (the gate replaces it); a bearer token is neither required nor
+  sufficient there.
+- **Disable/enable reuse the abuse-status machinery**: the same `SetStatusByID` write the
+  periodic re-scan uses. A disabled link serves the 410 warning page and records no clicks;
+  row, code and analytics survive. Enable is the API form of the operator re-enable that used
+  to be a manual DB action (which still works). Both actions are logged with their reason via
+  the gofr logger — audit-light v1; an audit table is future work.
+- **Counts are grouped queries, never N+1**: org aggregate counts (members/links/clicks_30d/
+  domains) and per-user org memberships are each one grouped `IN (...)` query per page.
+  `clicks_30d` is served by the clicks `(org_id, ts)` index.
+- **`provider_hint` is omitted** from the users listing: the core does not record which
+  identity provider a user signed in with, so there is nothing to derive it from cheaply.
+  (If sign-in provenance is ever stored, the field can be added additively.)
+
 ### Resolution & redirect
 
 ```
@@ -535,6 +587,8 @@ RESERVED_ALIASES                  extra reserved short-code words (comma-separat
 SHORTENER_DOMAINS                 extra shortener hosts refused as destinations
 RESCAN_INTERVAL                   destination re-scan interval (default 24h; ≥24h = daily)
 LINK_CREATE_RATE                  creates+edits per principal per minute (default 30)
+ADMIN_API_TOKEN                   instance admin API token (§4 "Instance admin API");
+                                  unset (default) = every /api/internal/* endpoint 404s
 ```
 
 `configs/.local.env` is gitignored; ship `configs/.sample.env`. No real secrets in git, ever.

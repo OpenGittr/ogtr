@@ -76,6 +76,20 @@ type StatsService interface {
 	UTMAnalysis(ctx *gofr.Context, orgID, viewerID int64) (*models.UTMAnalysis, error)
 }
 
+// AdminService is the instance-admin dependency of the handlers: the
+// operator API behind /api/internal/* — deliberately cross-org (the
+// sanctioned INV-6 exception), reachable only through the ADMIN_API_TOKEN
+// gate (auth.AdminTokenGate).
+type AdminService interface {
+	Users(ctx *gofr.Context, query string, page int) (*services.AdminUsersPage, error)
+	Orgs(ctx *gofr.Context, query string, page int) (*services.AdminOrgsPage, error)
+	Reports(ctx *gofr.Context, page int) (*services.AdminReportsPage, error)
+	Link(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error)
+	DisableLink(ctx *gofr.Context, id int64, reason string) (*models.AdminLinkDetail, error)
+	EnableLink(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error)
+	DailyStats(ctx *gofr.Context, days int) (*services.AdminDailyStats, error)
+}
+
 // DomainService is the custom-domain dependency of the handlers. Mutations
 // are OWNER-only (enforced in the service against the DB role); listing is
 // open to all org members.

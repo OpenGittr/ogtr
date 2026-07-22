@@ -39,8 +39,8 @@ Kubernetes: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 ## Security-relevant configuration
 
 A stock deployment is safe by default (structural URL guards, rate limits and reserved
-aliases are always on), but four knobs deserve a deliberate decision — each line names the
-risk of ignoring it. Full reference: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §6.
+aliases are always on), but a handful of knobs deserve a deliberate decision — each line
+names the risk of ignoring it. Full reference: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §6.
 
 | Config | What it does |
 |---|---|
@@ -49,6 +49,7 @@ risk of ignoring it. Full reference: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §
 | `WEBRISK_API_KEY` | Enables a real-time Google Web Risk lookup on every scan, catching fresh threats that haven't reached the public feeds yet. Optional and fail-open: a Web Risk outage never blocks link creation. |
 | `RESERVED_ALIASES` | Extra words to reserve on top of the built-in ~120 (auth, infra, and legal terms): add your brand and product names and any path your short domain serves, so no user can claim e.g. `yourdomain.com/login` as their short code. |
 | `LINK_CREATE_RATE` | Per-user link creations and edits per minute (default 30) — sized for humans and honest scripts. It's the brake on a stolen account or leaked API key; raise it deliberately for bulk API workloads rather than leaving it high by default. |
+| `ADMIN_API_TOKEN` | Enables the instance admin API (`/api/internal/*`): cross-org user/org listings, abuse-report triage, link disable/enable, daily stats — for operating your own deployment via an ops UI or curl (`X-Admin-Token` header). Unset (the default) the API answers 404 everywhere. Any holder of this token has full cross-organization admin control — treat it like a root password. |
 
 Vulnerability reports: see [SECURITY.md](SECURITY.md).
 

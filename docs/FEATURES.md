@@ -305,6 +305,15 @@ When a link has no explicit UTM parameters, they are inferred per click:
   once at startup from a configurable path and held for the process lifetime. Optional — the
   deployment works (minus location features) without it. The data is MaxMind-licensed and
   never shipped in the repo or images; operators mount it with their own license key.
+- **Instance admin API** — an operator surface under `/api/internal/*` for self-hosters
+  administering their own deployment (ARCHITECTURE.md "Instance admin API"): cross-org user
+  and org listings with aggregate counts, abuse-report triage listing, operator link detail,
+  link disable/enable (same 410-and-no-clicks semantics as a re-scan disable, actions logged
+  with their reason), and instance-wide daily signups/links/clicks. Gated by
+  `ADMIN_API_TOKEN` (`X-Admin-Token` header, constant-time check): unset — the default —
+  every admin endpoint answers 404, and a missing/wrong token is also 404 so the API's
+  existence is never advertised. This is the sanctioned INV-6 exception (§11). An operations
+  UI or plain curl can drive these endpoints.
 
 ---
 
@@ -410,7 +419,12 @@ reference these by their stable identifiers (INV-1 … INV-7).
   derived from row IDs, and share a single uniqueness namespace with custom aliases — links
   (including PRIVATE ones) cannot be enumerated and codes can never collide with aliases.
 - **INV-6 — Org-scoped everything.** Every query filters by the org derived from the auth
-  context — lookups, mutations, and analytics alike. No exceptions.
+  context — lookups, mutations, and analytics alike. **Single sanctioned exception:** the
+  instance admin API (`/api/internal/*`, §9) is deliberately cross-org — that is what
+  instance administration means. The compensating control is the `ADMIN_API_TOKEN` gate in
+  front of every admin route (404 when the token is unset, missing or wrong), and every
+  cross-org query lives in the one auditable `stores/admin.go`. No other endpoint or query
+  may cross org boundaries.
 - **INV-7 — Redirects never break because of the limits seam.** The deployment's
   `limits.Policy` (ARCHITECTURE.md §8) can bound resource creation and analytics *viewing*,
   never resolution: the resolve/redirect path takes no policy or usage dependency at all, so
@@ -434,6 +448,8 @@ Tracked as future work, separate from the shipped feature set above:
 - Webhooks or event export for clicks.
 - Shared-store (e.g. Redis) rate limiting for exact global limits across replicas
   (v1 limits are per-instance, §10.4).
-- Admin UI: tenant management, usage overview, abuse-report triage.
+- Admin UI on top of the instance admin API (the API itself shipped, §9): tenant management,
+  usage overview, abuse-report triage. Plus an admin audit table (v1 logs actions via the
+  application log).
 - Automated per-domain TLS for custom domains in hosted deployments (the app-level custom
   domain feature shipped in §1.6; certificate automation remains an operator concern).

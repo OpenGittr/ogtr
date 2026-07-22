@@ -130,6 +130,19 @@ func TestMiddleware(t *testing.T) {
 			path: "/api/v1/links",
 			wantStatus: http.StatusUnauthorized,
 		},
+		{
+			// /api/internal/* is guarded by AdminTokenGate instead: the JWT
+			// middleware must let it through without a bearer token so the
+			// gate (registered alongside) can decide.
+			desc: "instance-admin prefix is exempt from JWT", method: http.MethodGet,
+			path: "/api/internal/users",
+			wantStatus: http.StatusOK, wantReached: true,
+		},
+		{
+			desc: "instance-admin POST is exempt from JWT too", method: http.MethodPost,
+			path: "/api/internal/links/9/disable",
+			wantStatus: http.StatusOK, wantReached: true,
+		},
 	}
 
 	for _, tc := range tests {

@@ -1542,6 +1542,248 @@ func (mr *MockUsageReaderMockRecorder) EventsThisMonth(ctx, orgID any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EventsThisMonth", reflect.TypeOf((*MockUsageReader)(nil).EventsThisMonth), ctx, orgID)
 }
 
+// MockAdminStore is a mock of AdminStore interface.
+type MockAdminStore struct {
+	ctrl     *gomock.Controller
+	recorder *MockAdminStoreMockRecorder
+	isgomock struct{}
+}
+
+// MockAdminStoreMockRecorder is the mock recorder for MockAdminStore.
+type MockAdminStoreMockRecorder struct {
+	mock *MockAdminStore
+}
+
+// NewMockAdminStore creates a new mock instance.
+func NewMockAdminStore(ctrl *gomock.Controller) *MockAdminStore {
+	mock := &MockAdminStore{ctrl: ctrl}
+	mock.recorder = &MockAdminStoreMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAdminStore) EXPECT() *MockAdminStoreMockRecorder {
+	return m.recorder
+}
+
+// ClicksPerDay mocks base method.
+func (m *MockAdminStore) ClicksPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClicksPerDay", ctx, since)
+	ret0, _ := ret[0].([]models.DayCount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClicksPerDay indicates an expected call of ClicksPerDay.
+func (mr *MockAdminStoreMockRecorder) ClicksPerDay(ctx, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClicksPerDay", reflect.TypeOf((*MockAdminStore)(nil).ClicksPerDay), ctx, since)
+}
+
+// CountOrgs mocks base method.
+func (m *MockAdminStore) CountOrgs(ctx *gofr.Context, query string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountOrgs", ctx, query)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountOrgs indicates an expected call of CountOrgs.
+func (mr *MockAdminStoreMockRecorder) CountOrgs(ctx, query any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountOrgs", reflect.TypeOf((*MockAdminStore)(nil).CountOrgs), ctx, query)
+}
+
+// CountReports mocks base method.
+func (m *MockAdminStore) CountReports(ctx *gofr.Context) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountReports", ctx)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountReports indicates an expected call of CountReports.
+func (mr *MockAdminStoreMockRecorder) CountReports(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountReports", reflect.TypeOf((*MockAdminStore)(nil).CountReports), ctx)
+}
+
+// CountUsers mocks base method.
+func (m *MockAdminStore) CountUsers(ctx *gofr.Context, query string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountUsers", ctx, query)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountUsers indicates an expected call of CountUsers.
+func (mr *MockAdminStoreMockRecorder) CountUsers(ctx, query any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountUsers", reflect.TypeOf((*MockAdminStore)(nil).CountUsers), ctx, query)
+}
+
+// GetLink mocks base method.
+func (m *MockAdminStore) GetLink(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLink", ctx, id)
+	ret0, _ := ret[0].(*models.AdminLinkDetail)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLink indicates an expected call of GetLink.
+func (mr *MockAdminStoreMockRecorder) GetLink(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLink", reflect.TypeOf((*MockAdminStore)(nil).GetLink), ctx, id)
+}
+
+// LinksCreatedPerDay mocks base method.
+func (m *MockAdminStore) LinksCreatedPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LinksCreatedPerDay", ctx, since)
+	ret0, _ := ret[0].([]models.DayCount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LinksCreatedPerDay indicates an expected call of LinksCreatedPerDay.
+func (mr *MockAdminStoreMockRecorder) LinksCreatedPerDay(ctx, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LinksCreatedPerDay", reflect.TypeOf((*MockAdminStore)(nil).LinksCreatedPerDay), ctx, since)
+}
+
+// ListOrgs mocks base method.
+func (m *MockAdminStore) ListOrgs(ctx *gofr.Context, query string, limit, offset int) ([]models.AdminOrg, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListOrgs", ctx, query, limit, offset)
+	ret0, _ := ret[0].([]models.AdminOrg)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListOrgs indicates an expected call of ListOrgs.
+func (mr *MockAdminStoreMockRecorder) ListOrgs(ctx, query, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOrgs", reflect.TypeOf((*MockAdminStore)(nil).ListOrgs), ctx, query, limit, offset)
+}
+
+// ListReports mocks base method.
+func (m *MockAdminStore) ListReports(ctx *gofr.Context, limit, offset int) ([]models.AdminReport, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListReports", ctx, limit, offset)
+	ret0, _ := ret[0].([]models.AdminReport)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListReports indicates an expected call of ListReports.
+func (mr *MockAdminStoreMockRecorder) ListReports(ctx, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReports", reflect.TypeOf((*MockAdminStore)(nil).ListReports), ctx, limit, offset)
+}
+
+// ListUsers mocks base method.
+func (m *MockAdminStore) ListUsers(ctx *gofr.Context, query string, limit, offset int) ([]models.AdminUser, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUsers", ctx, query, limit, offset)
+	ret0, _ := ret[0].([]models.AdminUser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUsers indicates an expected call of ListUsers.
+func (mr *MockAdminStoreMockRecorder) ListUsers(ctx, query, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsers", reflect.TypeOf((*MockAdminStore)(nil).ListUsers), ctx, query, limit, offset)
+}
+
+// OrgCounts mocks base method.
+func (m *MockAdminStore) OrgCounts(ctx *gofr.Context, orgIDs []int64, clicksSince string) (map[int64]models.AdminOrgCounts, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OrgCounts", ctx, orgIDs, clicksSince)
+	ret0, _ := ret[0].(map[int64]models.AdminOrgCounts)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// OrgCounts indicates an expected call of OrgCounts.
+func (mr *MockAdminStoreMockRecorder) OrgCounts(ctx, orgIDs, clicksSince any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OrgCounts", reflect.TypeOf((*MockAdminStore)(nil).OrgCounts), ctx, orgIDs, clicksSince)
+}
+
+// SignupsPerDay mocks base method.
+func (m *MockAdminStore) SignupsPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SignupsPerDay", ctx, since)
+	ret0, _ := ret[0].([]models.DayCount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SignupsPerDay indicates an expected call of SignupsPerDay.
+func (mr *MockAdminStoreMockRecorder) SignupsPerDay(ctx, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SignupsPerDay", reflect.TypeOf((*MockAdminStore)(nil).SignupsPerDay), ctx, since)
+}
+
+// UserOrgs mocks base method.
+func (m *MockAdminStore) UserOrgs(ctx *gofr.Context, userIDs []int64) (map[int64][]models.AdminUserOrg, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UserOrgs", ctx, userIDs)
+	ret0, _ := ret[0].(map[int64][]models.AdminUserOrg)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UserOrgs indicates an expected call of UserOrgs.
+func (mr *MockAdminStoreMockRecorder) UserOrgs(ctx, userIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserOrgs", reflect.TypeOf((*MockAdminStore)(nil).UserOrgs), ctx, userIDs)
+}
+
+// MockLinkStatusStore is a mock of LinkStatusStore interface.
+type MockLinkStatusStore struct {
+	ctrl     *gomock.Controller
+	recorder *MockLinkStatusStoreMockRecorder
+	isgomock struct{}
+}
+
+// MockLinkStatusStoreMockRecorder is the mock recorder for MockLinkStatusStore.
+type MockLinkStatusStoreMockRecorder struct {
+	mock *MockLinkStatusStore
+}
+
+// NewMockLinkStatusStore creates a new mock instance.
+func NewMockLinkStatusStore(ctrl *gomock.Controller) *MockLinkStatusStore {
+	mock := &MockLinkStatusStore{ctrl: ctrl}
+	mock.recorder = &MockLinkStatusStoreMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockLinkStatusStore) EXPECT() *MockLinkStatusStoreMockRecorder {
+	return m.recorder
+}
+
+// SetStatusByID mocks base method.
+func (m *MockLinkStatusStore) SetStatusByID(ctx *gofr.Context, id int64, status string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetStatusByID", ctx, id, status)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetStatusByID indicates an expected call of SetStatusByID.
+func (mr *MockLinkStatusStoreMockRecorder) SetStatusByID(ctx, id, status any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusByID", reflect.TypeOf((*MockLinkStatusStore)(nil).SetStatusByID), ctx, id, status)
+}
+
 // MockRuleStore is a mock of RuleStore interface.
 type MockRuleStore struct {
 	ctrl     *gomock.Controller

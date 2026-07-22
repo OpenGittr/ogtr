@@ -644,6 +644,135 @@ func (mr *MockStatsServiceMockRecorder) UniqueClicks(ctx, orgID, linkIDs any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UniqueClicks", reflect.TypeOf((*MockStatsService)(nil).UniqueClicks), ctx, orgID, linkIDs)
 }
 
+// MockAdminService is a mock of AdminService interface.
+type MockAdminService struct {
+	ctrl     *gomock.Controller
+	recorder *MockAdminServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockAdminServiceMockRecorder is the mock recorder for MockAdminService.
+type MockAdminServiceMockRecorder struct {
+	mock *MockAdminService
+}
+
+// NewMockAdminService creates a new mock instance.
+func NewMockAdminService(ctrl *gomock.Controller) *MockAdminService {
+	mock := &MockAdminService{ctrl: ctrl}
+	mock.recorder = &MockAdminServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAdminService) EXPECT() *MockAdminServiceMockRecorder {
+	return m.recorder
+}
+
+// DailyStats mocks base method.
+func (m *MockAdminService) DailyStats(ctx *gofr.Context, days int) (*services.AdminDailyStats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DailyStats", ctx, days)
+	ret0, _ := ret[0].(*services.AdminDailyStats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DailyStats indicates an expected call of DailyStats.
+func (mr *MockAdminServiceMockRecorder) DailyStats(ctx, days any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DailyStats", reflect.TypeOf((*MockAdminService)(nil).DailyStats), ctx, days)
+}
+
+// DisableLink mocks base method.
+func (m *MockAdminService) DisableLink(ctx *gofr.Context, id int64, reason string) (*models.AdminLinkDetail, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DisableLink", ctx, id, reason)
+	ret0, _ := ret[0].(*models.AdminLinkDetail)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DisableLink indicates an expected call of DisableLink.
+func (mr *MockAdminServiceMockRecorder) DisableLink(ctx, id, reason any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DisableLink", reflect.TypeOf((*MockAdminService)(nil).DisableLink), ctx, id, reason)
+}
+
+// EnableLink mocks base method.
+func (m *MockAdminService) EnableLink(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnableLink", ctx, id)
+	ret0, _ := ret[0].(*models.AdminLinkDetail)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnableLink indicates an expected call of EnableLink.
+func (mr *MockAdminServiceMockRecorder) EnableLink(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableLink", reflect.TypeOf((*MockAdminService)(nil).EnableLink), ctx, id)
+}
+
+// Link mocks base method.
+func (m *MockAdminService) Link(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Link", ctx, id)
+	ret0, _ := ret[0].(*models.AdminLinkDetail)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Link indicates an expected call of Link.
+func (mr *MockAdminServiceMockRecorder) Link(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Link", reflect.TypeOf((*MockAdminService)(nil).Link), ctx, id)
+}
+
+// Orgs mocks base method.
+func (m *MockAdminService) Orgs(ctx *gofr.Context, query string, page int) (*services.AdminOrgsPage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Orgs", ctx, query, page)
+	ret0, _ := ret[0].(*services.AdminOrgsPage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Orgs indicates an expected call of Orgs.
+func (mr *MockAdminServiceMockRecorder) Orgs(ctx, query, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Orgs", reflect.TypeOf((*MockAdminService)(nil).Orgs), ctx, query, page)
+}
+
+// Reports mocks base method.
+func (m *MockAdminService) Reports(ctx *gofr.Context, page int) (*services.AdminReportsPage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Reports", ctx, page)
+	ret0, _ := ret[0].(*services.AdminReportsPage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Reports indicates an expected call of Reports.
+func (mr *MockAdminServiceMockRecorder) Reports(ctx, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reports", reflect.TypeOf((*MockAdminService)(nil).Reports), ctx, page)
+}
+
+// Users mocks base method.
+func (m *MockAdminService) Users(ctx *gofr.Context, query string, page int) (*services.AdminUsersPage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Users", ctx, query, page)
+	ret0, _ := ret[0].(*services.AdminUsersPage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Users indicates an expected call of Users.
+func (mr *MockAdminServiceMockRecorder) Users(ctx, query, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Users", reflect.TypeOf((*MockAdminService)(nil).Users), ctx, query, page)
+}
+
 // MockDomainService is a mock of DomainService interface.
 type MockDomainService struct {
 	ctrl     *gomock.Controller
