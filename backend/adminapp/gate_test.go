@@ -1,4 +1,4 @@
-package main
+package adminapp
 
 import (
 	"net/http"

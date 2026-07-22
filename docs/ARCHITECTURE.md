@@ -413,9 +413,10 @@ Design decisions:
 
 - **A separate service, not routes on the public server.** The cross-org admin surface must
   never share a listener with internet-facing traffic. `backend/admin` is its own
-  `package main` (same Go module, reusing the shared `stores`/`services`/`handlers`
-  packages), deployed as the `ogtr-internal` ClusterIP service and NEVER exposed on any
-  ingress. **The primary access control is network isolation** — only in-cluster callers
+  `package main` — a thin entrypoint over the `backend/adminapp` assembly (same Go module,
+  reusing the shared `stores`/`services`/`handlers` packages; see §8 "Deployment
+  composition" for the `adminapp` options) — deployed as the `ogtr-internal` ClusterIP
+  service and NEVER exposed on any ingress. **The primary access control is network isolation** — only in-cluster callers
   (e.g. an operations console's gateway) can reach it at all; the token gate below is
   defense in depth. Naming nuance: the component directory is `backend/admin` because
   `internal/` is Go's reserved import-restriction directory name, but the
@@ -778,9 +779,12 @@ The whole application assembly lives in **`backend/app`**: `app.Run(opts...)` bu
 configuration, migrations, stores, services, handlers, routes and cron jobs, then serves.
 The stock public-server binary is just `backend/server/main.go` → `app.Run()` — with no
 options, behavior is identical to the pre-package single-file main. (The instance-admin
-service, `backend/admin`, does NOT go through `backend/app` — it is its own tiny assembly
-with exactly one concern.) A deployment composes the same core with its own
-additions through functional options:
+service does NOT go through `backend/app` — its own tiny assembly lives in
+`backend/adminapp`, with the same shape: `backend/admin/main.go` → `adminapp.Run()`, and
+`adminapp.WithRoutes(func(*gofr.App, *adminapp.Services))` for deployment-registered
+operator routes. Composed routes register under the same `/api/internal/` prefix and
+therefore sit behind the same `ADMIN_API_TOKEN` gate as the core admin routes.) A
+deployment composes the same core with its own additions through functional options:
 
 | Option | Effect |
 |---|---|
