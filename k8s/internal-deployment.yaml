@@ -1,0 +1,122 @@
+# ogtr-internal — the instance-admin service (backend/admin): the operator
+# API under /api/internal/*, split out of the public server
+# (ARCHITECTURE.md "Instance admin service").
+#
+# ############################################################################
+# # SECURITY: CLUSTER-INTERNAL ONLY.                                         #
+# # NEVER add this service to any Ingress or expose it publicly in any way.  #
+# # The primary access control is network isolation (ClusterIP service,     #
+# # reachable only from inside the cluster — e.g. an operations console's    #
+# # gateway); the ADMIN_API_TOKEN gate is defense in depth, not the wall.    #
+# ############################################################################
+#
+# Same database as the public server; no migrations (the public server owns
+# the schema and migrates at boot). Component dir is backend/admin only
+# because `internal/` is Go's reserved directory name — the deployment keeps
+# the conventional internal-service name.
+#
+# Image: build locally and prefix your registry:
+#   docker build --platform linux/amd64 -f backend/admin/Dockerfile \
+#     -t <registry>/ogtr-internal:<tag> backend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ogtr-internal
+  namespace: ogtr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ogtr-internal
+  template:
+    metadata:
+      labels:
+        app: ogtr-internal
+      annotations:
+        # Gofr serves Prometheus metrics on the dedicated metrics port.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2121"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: internal
+        # CHANGE: prefix with your registry once one is decided.
+        image: ogtr-internal:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8000
+        - name: metrics
+          containerPort: 2121
+        # Shares the public server's configmap (ports, DB dialect/port/name,
+        # log level); env entries below override where the two differ.
+        envFrom:
+        - configMapRef:
+            name: ogtr-config
+        env:
+        - name: APP_NAME
+          value: "ogtr-internal"
+        # Gofr's MySQL DSN uses loc=Local — keep the process zone at UTC.
+        - name: TZ
+          value: "UTC"
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: db-host
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: db-user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: db-password
+        # The admin token (defense in depth on top of network isolation).
+        # Absent/empty: every /api/internal/* endpoint answers 404 — the
+        # service is dark.
+        - name: ADMIN_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: ogtr-secrets
+              key: admin-api-token
+              optional: true
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "10m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+        # Gofr built-in health endpoints (no auth; the token gate only
+        # covers /api/internal/*).
+        livenessProbe:
+          httpGet:
+            path: /.well-known/alive
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /.well-known/health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+# ClusterIP only — resolvable in-cluster as
+# http://ogtr-internal.ogtr.svc.cluster.local. NEVER referenced by any
+# Ingress (see the security banner above).
+apiVersion: v1
+kind: Service
+metadata:
+  name: ogtr-internal
+  namespace: ogtr
+spec:
+  selector:
+    app: ogtr-internal
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP

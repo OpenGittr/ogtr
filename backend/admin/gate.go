@@ -1,4 +1,4 @@
-package auth
+package main
 
 import (
 	"crypto/sha256"
@@ -10,17 +10,18 @@ import (
 	gofrHTTP "gofr.dev/pkg/gofr/http"
 )
 
-// AdminTokenHeader carries the instance-admin token on every
-// /api/internal/* request (ARCHITECTURE.md "Instance admin API").
+// AdminTokenHeader carries the instance-admin token on every /api/internal/*
+// request to this service (ARCHITECTURE.md "Instance admin service").
 const AdminTokenHeader = "X-Admin-Token"
 
-// AdminPathPrefix scopes the instance-admin API. The JWT middleware exempts
-// this prefix (AdminTokenGate replaces it as the guard).
+// AdminPathPrefix scopes the token gate. Everything under it is the admin
+// API; everything outside it (Gofr's /.well-known health/alive probes,
+// favicon) passes through untouched so Kubernetes probes keep working.
 const AdminPathPrefix = "/api/internal/"
 
-// AdminTokenGate returns the middleware guarding the instance-admin API
-// (every route under /api/internal/). The gate is the config switch AND the
-// authentication in one:
+// AdminTokenGate returns the middleware guarding the admin API — every
+// /api/internal/* route of this service. The gate is the config switch AND
+// the authentication in one:
 //
 //   - configuredToken empty (ADMIN_API_TOKEN unset — the default): every
 //     admin request answers 404, exactly like the dev-provider pattern —
@@ -29,9 +30,11 @@ const AdminPathPrefix = "/api/internal/"
 //     (constant-time comparison over SHA-256 digests, so neither content nor
 //     length leaks through timing). A missing or wrong token is also 404,
 //     not 401 — a prober without the token cannot distinguish a deployment
-//     that has the admin API enabled from one that does not.
+//     that has the admin service enabled from one that does not.
 //
-// Non-admin paths pass through untouched.
+// The token is defense in depth: the primary control is network isolation —
+// this service is cluster-internal only (ClusterIP service, never exposed on
+// any public ingress).
 func AdminTokenGate(configuredToken string) gofrHTTP.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

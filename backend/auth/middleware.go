@@ -19,11 +19,11 @@ const APIKeyHeader = "X-API-Key"
 // POST /api/v1/auth/refresh (they bootstrap a session),
 // GET /api/v1/auth/providers (the SPA asks it before any session
 // exists), GET /api/v1/resolve
-// (resolution never requires login, FEATURES.md §2.1), the /api/internal/
-// instance-admin prefix (guarded by AdminTokenGate instead — the shared
-// X-Admin-Token replaces JWT there), plus everything
+// (resolution never requires login, FEATURES.md §2.1), plus everything
 // outside /api/ — Gofr's well-known health/alive/openapi paths, favicon, and
 // the public GET /{code} redirect. Metrics live on a separate port.
+// /api/internal/* gets no special treatment: the instance-admin API is a
+// separate service (backend/admin) and this server registers no such route.
 //
 // extraExempt lists additional exact request paths (any method) a
 // deployment exempts from auth — endpoints it registers itself that carry
@@ -91,13 +91,6 @@ func isAuthExempt(r *http.Request) bool {
 	path := r.URL.Path
 
 	if !strings.HasPrefix(path, "/api/") {
-		return true
-	}
-
-	// Instance-admin API: the AdminTokenGate middleware is the guard there —
-	// a JWT is neither required nor sufficient (ARCHITECTURE.md "Instance
-	// admin API").
-	if strings.HasPrefix(path, AdminPathPrefix) {
 		return true
 	}
 

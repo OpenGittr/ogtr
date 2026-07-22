@@ -112,7 +112,6 @@ func setup(app *gofr.App, o *options) error {
 	apiKeyStore := stores.NewAPIKeyStore()
 	domainStore := stores.NewDomainStore()
 	reportStore := stores.NewAbuseReportStore()
-	adminStore := stores.NewAdminStore()
 	usageStore := usage.NewStore()
 
 	// The deployment's resource policy (ARCHITECTURE.md §8 "Extension seam:
@@ -133,9 +132,6 @@ func setup(app *gofr.App, o *options) error {
 	reportSvc := services.NewReportService(linkStore, reportStore, reportLimiter)
 	rescanSvc := services.NewRescanService(linkStore, urlScanner)
 	statsSvc := services.NewStatsService(statsStore, linkStore, ruleStore, policy, usageStore)
-	// adminSvc reuses linkStore's SetStatusByID — operator disable/enable
-	// shares the re-scan's abuse-status machinery exactly.
-	adminSvc := services.NewAdminService(adminStore, linkStore)
 	apiKeySvc := services.NewAPIKeyService(apiKeyStore, policy)
 	// net.DefaultResolver is the production DNSResolver; tests substitute a
 	// mock behind the same interface — the verification code is identical.
@@ -152,17 +148,8 @@ func setup(app *gofr.App, o *options) error {
 	statsH := handlers.NewStatsHandler(statsSvc)
 	apiKeyH := handlers.NewAPIKeyHandler(apiKeySvc)
 	domainH := handlers.NewDomainHandler(domainSvc)
-	adminH := handlers.NewAdminHandler(adminSvc)
 
-	// Instance admin API gate (ARCHITECTURE.md "Instance admin API"):
-	// ADMIN_API_TOKEN unset (the default) keeps every /api/internal/* route
-	// answering 404 — the feature is dark, like the dev provider.
-	adminToken := app.Config.Get("ADMIN_API_TOKEN")
-	if adminToken != "" {
-		app.Logger().Infof("instance admin API enabled (/api/internal/*, X-Admin-Token auth)")
-	}
-
-	app.UseMiddleware(auth.Middleware(tokens, o.exemptPaths...), auth.AdminTokenGate(adminToken),
+	app.UseMiddleware(auth.Middleware(tokens, o.exemptPaths...),
 		visitor.Middleware(), handlers.CacheControl())
 
 	// Session (ARCHITECTURE.md §4). providers + google + microsoft + dev +
@@ -231,16 +218,11 @@ func setup(app *gofr.App, o *options) error {
 	// received a bad short link can flag it without an account.
 	app.POST("/api/v1/report", reportH.Create)
 
-	// Instance admin API (operator surface; deliberately cross-org — the
-	// sanctioned INV-6 exception). Guarded by AdminTokenGate above, never by
-	// JWT; all six groups 404 until ADMIN_API_TOKEN is set.
-	app.GET("/api/internal/users", adminH.Users)
-	app.GET("/api/internal/orgs", adminH.Orgs)
-	app.GET("/api/internal/reports", adminH.Reports)
-	app.GET("/api/internal/links/{id}", adminH.Link)
-	app.POST("/api/internal/links/{id}/disable", adminH.DisableLink)
-	app.POST("/api/internal/links/{id}/enable", adminH.EnableLink)
-	app.GET("/api/internal/stats/daily", adminH.DailyStats)
+	// Deliberately absent: the instance admin API (/api/internal/*). It is
+	// a separate, cluster-internal service (backend/admin, deployed as
+	// ogtr-internal) — the public server never registers any admin route
+	// and treats /api/internal/* like any other unknown /api path
+	// (ARCHITECTURE.md "Instance admin service").
 
 	// Public resolution (§4). /api/v1/resolve is auth-exempt; the root
 	// redirect pattern's charset excludes dots, so gofr's own single-segment

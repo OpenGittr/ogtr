@@ -58,9 +58,13 @@ jobs:
     strategy:
       matrix:
         image:
+          # Both backend images build from the backend/ module root context.
           - name: server
             context: backend
-            args: ""
+            args: "-f backend/server/Dockerfile"
+          - name: internal
+            context: backend
+            args: "-f backend/admin/Dockerfile"
           - name: app
             context: frontend
             # VITE_* are baked at build time; CI only proves the build works.

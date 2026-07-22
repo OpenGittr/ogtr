@@ -18,4 +18,4 @@ dist/
 
 # Licensed MaxMind GeoIP data (local dev only — never committed; see
 # docs/ARCHITECTURE.md §6)
-backend/data/
+backend/server/data/

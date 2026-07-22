@@ -131,17 +131,12 @@ func TestMiddleware(t *testing.T) {
 			wantStatus: http.StatusUnauthorized,
 		},
 		{
-			// /api/internal/* is guarded by AdminTokenGate instead: the JWT
-			// middleware must let it through without a bearer token so the
-			// gate (registered alongside) can decide.
-			desc: "instance-admin prefix is exempt from JWT", method: http.MethodGet,
+			// The instance-admin API is a separate service (backend/admin);
+			// on this server /api/internal/* is an ordinary guarded /api
+			// path — no exemption, no special casing.
+			desc: "instance-admin prefix is guarded like any /api path", method: http.MethodGet,
 			path: "/api/internal/users",
-			wantStatus: http.StatusOK, wantReached: true,
-		},
-		{
-			desc: "instance-admin POST is exempt from JWT too", method: http.MethodPost,
-			path: "/api/internal/links/9/disable",
-			wantStatus: http.StatusOK, wantReached: true,
+			wantStatus: http.StatusUnauthorized,
 		},
 	}
 

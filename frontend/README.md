@@ -10,8 +10,8 @@ Port **5800** (strict) from the project's 5800–5899 block.
 # 1. MySQL (host port 5830)
 docker compose up -d              # from the repo root
 
-# 2. Backend (port 5810; needs backend/configs/.local.env — see configs/.sample.env)
-cd backend && go run .
+# 2. Backend (port 5810; needs backend/server/configs/.local.env — see configs/.sample.env)
+cd backend/server && go run .
 
 # 3. This app
 cd frontend

@@ -78,8 +78,8 @@ type StatsService interface {
 
 // AdminService is the instance-admin dependency of the handlers: the
 // operator API behind /api/internal/* — deliberately cross-org (the
-// sanctioned INV-6 exception), reachable only through the ADMIN_API_TOKEN
-// gate (auth.AdminTokenGate).
+// sanctioned INV-6 exception), served only by the separate backend/admin
+// service behind its ADMIN_API_TOKEN gate.
 type AdminService interface {
 	Users(ctx *gofr.Context, query string, page int) (*services.AdminUsersPage, error)
 	Orgs(ctx *gofr.Context, query string, page int) (*services.AdminOrgsPage, error)

@@ -6,10 +6,18 @@ including the settled design decisions and per-phase implementation notes.
 ## 1. Components
 
 ```
-backend     Go + Gofr + MySQL. One service, two route groups:
+backend            Go + Gofr + MySQL. ONE module, TWO service entrypoints:
+  backend/server   the public product:
                      GET /{code}        → redirect + click recording (public)
                      /api/v1/*          → management API (JWT or API-key auth)
-frontend       React + Tailwind SPA (dashboard). CSR, served by gostatic.
+  backend/admin    the instance-admin service (§4 "Instance admin service"):
+                     /api/internal/*    → operator API, X-Admin-Token gate.
+                   Deployed as `ogtr-internal`, CLUSTER-INTERNAL ONLY — never
+                   on any public ingress. (The directory is `admin`, not
+                   `internal`, only because `internal/` is Go's reserved
+                   import-restriction directory name; the deployment/service
+                   keeps the conventional internal-service name.)
+frontend           React + Tailwind SPA (dashboard). CSR, served by gostatic.
 k8s/               All deployment manifests.
 ```
 
@@ -33,10 +41,12 @@ serve/display its short links on it.
   from the URL path. No `/orgs/{orgId}/...` path scoping.
 - **Multi-tenant always**: orgs are first-class from the first request. Even a solo self-hosted
   deployment creates an org during setup. One code path, no "single-tenant mode".
-- **Backend shape**: a single Gofr service at `backend`. Redirects served at root
-  (`GET /{code}`), management API under `/api/v1/*`. Custom aliases are checked against a
-  reserved-word blacklist (`api`, `.well-known`, `metrics`, `login`, etc.) so they can never
-  shadow service routes.
+- **Backend shape**: one Go module rooted at `backend/` (shared `stores`/`services`/
+  `handlers`/`models`/... packages) with two sibling `package main` entrypoints:
+  `backend/server` (the public product) and `backend/admin` (the cluster-internal
+  instance-admin service). Redirects served at root (`GET /{code}`), management API under
+  `/api/v1/*`. Custom aliases are checked against a reserved-word blacklist (`api`,
+  `.well-known`, `metrics`, `login`, etc.) so they can never shadow service routes.
 - **Auth**: Google and Microsoft login (OIDC) behind a pluggable auth provider boundary (§5)
   so other identity providers can be added without touching the rest of the login flow.
 - **Open core**: billing/plan logic lives outside this repo; never add commercial features,
@@ -49,8 +59,9 @@ serve/display its short links on it.
 
 All tables carry `org_id` except `users` and `orgs` themselves. Every query filters by `org_id`
 derived from the auth context (FEATURES.md INV-6). The single sanctioned exception is the
-instance admin API (§4 "Instance admin API"), whose queries are deliberately cross-org and
-gated by `ADMIN_API_TOKEN` instead of a session.
+instance admin API (§4 "Instance admin service"), whose queries are deliberately cross-org,
+served only by the separate cluster-internal `backend/admin` service and gated by
+`ADMIN_API_TOKEN` instead of a session.
 
 ```
 orgs           id, name, slug, auto_join_domain (nullable), created_at
@@ -366,11 +377,13 @@ Implementation notes (phase 6):
   listed and keep `api_key_id` attribution on the links they created. "Rotation" =
   create a new key, disable the old one.
 
-### Instance admin API
+### Instance admin service
 
 The operator surface of a deployment: a self-hoster (or the operations console of a hosted
 deployment) administering their own instance. Open-core functionality — instance
-administration, not commercial logic.
+administration, not commercial logic. Served by the SEPARATE `backend/admin` service
+(deployed as `ogtr-internal`, cluster-internal only) — the public server (`backend/server`)
+registers none of these routes.
 
 ```
 GET  /api/internal/users?query=&page=        users across all orgs (25/page) + their org
@@ -390,20 +403,35 @@ GET  /api/internal/stats/daily?days=30       per-day {date, signups, links_creat
 
 Design decisions:
 
+- **A separate service, not routes on the public server.** The cross-org admin surface must
+  never share a listener with internet-facing traffic. `backend/admin` is its own
+  `package main` (same Go module, reusing the shared `stores`/`services`/`handlers`
+  packages), deployed as the `ogtr-internal` ClusterIP service and NEVER exposed on any
+  ingress. **The primary access control is network isolation** — only in-cluster callers
+  (e.g. an operations console's gateway) can reach it at all; the token gate below is
+  defense in depth. Naming nuance: the component directory is `backend/admin` because
+  `internal/` is Go's reserved import-restriction directory name, but the
+  deployment/service name stays `ogtr-internal` (the internal-service convention) and the
+  route paths stay `/api/internal/*` (a wire contract consumers depend on).
 - **INV-6 carve-out.** These endpoints are DELIBERATELY cross-org — the one sanctioned
-  exception to "org-scoped everything". The compensating control is the token gate: nothing
-  under `/api/internal/` is reachable without the deployment's `ADMIN_API_TOKEN`. All the
-  cross-org queries live in one file (`stores/admin.go`) so the exception stays auditable.
+  exception to "org-scoped everything". The compensating controls: the admin service is
+  network-isolated, nothing under `/api/internal/` is reachable without the deployment's
+  `ADMIN_API_TOKEN`, and all the cross-org queries live in one file (`stores/admin.go`) so
+  the exception stays auditable.
 - **Config-gated dark** (the dev-provider pattern): `ADMIN_API_TOKEN` unset — the default —
-  makes every admin endpoint answer **404**. A stock deployment behaves as if the API did not
-  exist.
-- **Token gate, not JWT**: `auth.AdminTokenGate` middleware guards the `/api/internal/`
-  prefix; the request's `X-Admin-Token` header must equal `ADMIN_API_TOKEN`
-  (constant-time comparison over SHA-256 digests, so neither content nor length leaks through
-  timing). A missing or wrong token is also **404, not 401** — a prober without the token
-  cannot distinguish a deployment that has the API enabled from one that does not. The JWT
-  middleware exempts the prefix (the gate replaces it); a bearer token is neither required nor
-  sufficient there.
+  makes every admin endpoint answer **404**. A stock deployment that doesn't run
+  `ogtr-internal` has no admin surface at all; one that runs it without the token behaves
+  as if the API did not exist.
+- **Token gate, not JWT**: the service's `AdminTokenGate` middleware (`backend/admin`)
+  guards the `/api/internal/` prefix; the request's `X-Admin-Token` header must equal
+  `ADMIN_API_TOKEN` (constant-time comparison over SHA-256 digests, so neither content nor
+  length leaks through timing). A missing or wrong token is also **404, not 401** — a prober
+  without the token cannot distinguish a deployment that has the API enabled from one that
+  does not. There is no JWT middleware on this service — it has exactly one concern. On the
+  public server, `/api/internal/*` is an ordinary unknown `/api` path (401 without a
+  session, 404 with one) — no route, no exemption, nothing to probe.
+- **Schema ownership stays with the public server**: `backend/admin` runs no migrations; it
+  reads and writes the same MySQL database whose schema `backend/server` migrates at boot.
 - **Disable/enable reuse the abuse-status machinery**: the same `SetStatusByID` write the
   periodic re-scan uses. A disabled link serves the 410 warning page and records no clicks;
   row, code and analytics survive. Enable is the API form of the operator re-enable that used
@@ -562,6 +590,8 @@ verify.
 
 ## 7. Configuration (env, loaded by Gofr)
 
+Public server (`backend/server`, config in `backend/server/configs/`):
+
 ```
 HTTP_PORT / METRICS_PORT          5810 / 5811 locally (see LOCAL_DEVELOPMENT.md ports table)
 DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_DIALECT=mysql
@@ -587,11 +617,19 @@ RESERVED_ALIASES                  extra reserved short-code words (comma-separat
 SHORTENER_DOMAINS                 extra shortener hosts refused as destinations
 RESCAN_INTERVAL                   destination re-scan interval (default 24h; ≥24h = daily)
 LINK_CREATE_RATE                  creates+edits per principal per minute (default 30)
-ADMIN_API_TOKEN                   instance admin API token (§4 "Instance admin API");
-                                  unset (default) = every /api/internal/* endpoint 404s
 ```
 
-`configs/.local.env` is gitignored; ship `configs/.sample.env`. No real secrets in git, ever.
+Instance-admin service (`backend/admin`, config in `backend/admin/configs/`):
+
+```
+HTTP_PORT / METRICS_PORT          5820 / 5821 locally (the +20 secondary-backend slot)
+DB_*                              the SAME database as the public server (no migrations here)
+ADMIN_API_TOKEN                   admin token (§4 "Instance admin service"); unset (default)
+                                  = every /api/internal/* endpoint 404s (the service is dark)
+```
+
+Each service's `configs/.local.env` is gitignored; ship `configs/.sample.env`. No real
+secrets in git, ever.
 
 ## 8. Cross-cutting rules
 
@@ -667,11 +705,11 @@ implementation decisions:
 resource creation and analytics viewing:
 
 - **`limits.Policy`** — an interface consulted before resource-creating actions and by the
-  stats service. `main.go` wires **`limits.Unlimited{}`**, the default policy whose every
-  check allows (and whose analytics window is unbounded), so a stock deployment behaves as if
-  the seam did not exist. A deployment may substitute its own implementation at the single
-  `policy` variable in `main.go` — every service that consults the seam receives the same
-  instance.
+  stats service. The app assembly (`backend/app`) wires **`limits.Unlimited{}`**, the
+  default policy whose every check allows (and whose analytics window is unbounded), so a
+  stock deployment behaves as if the seam did not exist. A deployment may substitute its own
+  implementation via `app.WithPolicy` — every service that consults the seam receives the
+  same instance.
 - **Checks (axes)** and where each is enforced:
 
   | Check | Enforced at |
@@ -721,7 +759,7 @@ resource creation and analytics viewing:
   calendar month, UTC; events = click rows, per INV-4). The open core itself uses only
   `EventsThisMonth` (the stats service's viewable-events gate). The intended composition:
   a deployment's Policy implementation is **constructed with a `usage.Reader`**
-  (`usage.NewStore()` in `main.go`) and consults its counters inside each check — the core
+  (`usage.NewStore()` in the composing deployment's main) and consults its counters inside each check — the core
   never couples the two. `EventsThisMonth` is served by the clicks `(org_id, ts)` index
   (added as the first incremental migration; the `(org_id, link_id, ts)` analytics index
   cannot serve an org-wide time range).
@@ -730,8 +768,10 @@ resource creation and analytics viewing:
 
 The whole application assembly lives in **`backend/app`**: `app.Run(opts...)` builds
 configuration, migrations, stores, services, handlers, routes and cron jobs, then serves.
-The stock binary is just `main.go` → `app.Run()` — with no options, behavior is identical
-to the pre-package single-file main. A deployment composes the same core with its own
+The stock public-server binary is just `backend/server/main.go` → `app.Run()` — with no
+options, behavior is identical to the pre-package single-file main. (The instance-admin
+service, `backend/admin`, does NOT go through `backend/app` — it is its own tiny assembly
+with exactly one concern.) A deployment composes the same core with its own
 additions through functional options:
 
 | Option | Effect |

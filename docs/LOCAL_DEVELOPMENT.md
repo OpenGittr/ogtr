@@ -17,14 +17,14 @@ never enable it in production.
 docker compose up -d
 
 # 2. Minimal backend config
-cat > backend/configs/.local.env <<'EOF'
+cat > backend/server/configs/.local.env <<'EOF'
 DB_PASSWORD=ogtr-local
 JWT_SIGNING_KEY=any-long-random-string-for-local-use
 AUTH_PROVIDERS=dev
 EOF
 
 # 3. Backend (listens on :5810, migrates on boot)
-cd backend && go run .
+cd backend/server && go run .
 
 # 4. Dashboard SPA — open http://localhost:5800 in another terminal
 cd frontend && npm install && npm run dev
@@ -45,8 +45,10 @@ explicit ports in Gofr config).
 | Port | Service |
 |---|---|
 | 5800 | frontend — Vite dev server (dashboard SPA) |
-| 5810 | backend — HTTP |
-| 5811 | backend — Prometheus metrics |
+| 5810 | backend/server (public server) — HTTP |
+| 5811 | backend/server — Prometheus metrics |
+| 5820 | backend/admin (instance-admin service) — HTTP |
+| 5821 | backend/admin — Prometheus metrics |
 | 5830 | MySQL (docker-compose host port) |
 
 ## Prerequisites
@@ -66,18 +68,37 @@ explicit ports in Gofr config).
 docker compose up -d
 
 # 2. Backend config — copy the sample and fill in the blanks
-cp backend/configs/.sample.env backend/configs/.local.env
+cp backend/server/configs/.sample.env backend/server/configs/.local.env
 # Set at least: DB_PASSWORD=ogtr-local, JWT_SIGNING_KEY=<any long random
 # string>, and either AUTH_PROVIDERS=dev (zero-setup, see the section above)
 # or GOOGLE_CLIENT_ID=<see "Google OAuth" below>.
 # .local.env is gitignored — real values never enter git.
 
 # 3. Backend (runs migrations on boot, listens on 5810/5811)
-cd backend && go run .
+cd backend/server && go run .
 
 # 4. Dashboard SPA — http://localhost:5800
 cd frontend && npm install && npm run dev
 ```
+
+## Instance-admin service (optional, second terminal)
+
+The operator API (`/api/internal/*`, ARCHITECTURE.md "Instance admin
+service") is a separate service in `backend/admin` — the public server on
+5810 never serves it. Run it only when you're working on the admin surface
+(e.g. driving it from the operations console):
+
+```sh
+cp backend/admin/configs/.sample.env backend/admin/configs/.local.env
+# Set DB_PASSWORD=ogtr-local and ADMIN_API_TOKEN=<openssl rand -hex 32>.
+
+cd backend/admin && go run .   # listens on 5820/5821, no migrations
+
+curl -H "X-Admin-Token: <your token>" http://localhost:5820/api/internal/users
+```
+
+Without `ADMIN_API_TOKEN` (or with a wrong `X-Admin-Token`) every admin
+endpoint answers 404. On 5810 the same paths are just unknown API routes.
 
 The Vite dev server on 5800 proxies `^/api/` to the backend on 5810, so the
 SPA works same-origin with no CORS setup. The backend's
@@ -96,7 +117,7 @@ opt-in `AUTH_PROVIDERS` entry.
 1. Create an OAuth **Web application** client in Google Cloud Console.
 2. Add `http://localhost:5800` to **Authorized JavaScript origins** — GIS
    refuses to issue tokens to unlisted origins.
-3. Put the client ID in `backend/configs/.local.env`
+3. Put the client ID in `backend/server/configs/.local.env`
    (`GOOGLE_CLIENT_ID=...`) and make sure `AUTH_PROVIDERS` includes `google`.
    The SPA gets the client ID from `GET /api/v1/auth/providers`; setting
    `VITE_GOOGLE_CLIENT_ID` in `frontend/.env.local` is only a fallback
@@ -125,7 +146,7 @@ Microsoft's published `common` v2.0 set).
      for local dev, plus `https://<your-app-origin>/auth/microsoft` for each
      deployed dashboard origin.
 2. Put the registration's **Application (client) ID** in
-   `backend/configs/.local.env` (`MICROSOFT_CLIENT_ID=...`) and add
+   `backend/server/configs/.local.env` (`MICROSOFT_CLIENT_ID=...`) and add
    `microsoft` to `AUTH_PROVIDERS`. The SPA gets the client ID from
    `GET /api/v1/auth/providers`; there is no build-time fallback.
 
@@ -136,9 +157,10 @@ path is identical.
 ## GeoIP (optional, local)
 
 Location targeting, click geo and city autocomplete need MaxMind GeoLite2
-files, which are licensed and **never committed** (`backend/data/` is
+files, which are licensed and **never committed** (`backend/server/data/` is
 gitignored). Download with your own MaxMind license key and set in
-`.local.env`:
+`backend/server/configs/.local.env` (paths relative to the `backend/server`
+working directory):
 
 ```
 GEOIP_DB_PATH=data/GeoLite2-City.mmdb
@@ -191,8 +213,8 @@ cd frontend && npm run build
 ```
 
 CI (`.github/workflows/ci.yaml`) runs the same: backend build/vet/test with
-race + coverage, the frontend build, and build-only checks of both
-Docker images.
+race + coverage, the frontend build, and build-only checks of all three
+Docker images (server, internal, app).
 
 ## Docker images (local build)
 
@@ -200,7 +222,8 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for the full build/deploy story. Quick
 sanity build (deployment target is linux/amd64 — we develop on Mac):
 
 ```sh
-docker build --platform linux/amd64 -t ogtr-server backend
+docker build --platform linux/amd64 -f backend/server/Dockerfile -t ogtr-server backend
+docker build --platform linux/amd64 -f backend/admin/Dockerfile -t ogtr-internal backend
 docker build --platform linux/amd64 \
   --build-arg VITE_API_URL=http://localhost:5810 \
   --build-arg VITE_GOOGLE_CLIENT_ID=<client-id> \

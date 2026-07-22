@@ -1,9 +1,12 @@
-# ogtr backend — redirects at /, management API under /api/v1.
+# ogtr public server — redirects at /, management API under /api/v1.
 # Served on the SHORT_DOMAIN host (ingress.yaml). Stateless (stateless JWTs,
-# MySQL for all state), so it scales horizontally.
+# MySQL for all state), so it scales horizontally. The instance-admin API is
+# NOT here — it is the separate ogtr-internal service
+# (internal-deployment.yaml), which must never appear on any ingress.
 #
 # Image: no registry is decided yet — build locally and prefix your registry:
-#   docker build --platform linux/amd64 -t <registry>/ogtr-server:<tag> backend
+#   docker build --platform linux/amd64 -f backend/server/Dockerfile \
+#     -t <registry>/ogtr-server:<tag> backend
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -75,14 +78,8 @@ spec:
               name: ogtr-secrets
               key: webrisk-api-key
               optional: true
-        # Optional instance admin API (ARCHITECTURE.md "Instance admin
-        # API"); an empty value keeps every /api/internal/* endpoint dark.
-        - name: ADMIN_API_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: ogtr-secrets
-              key: admin-api-token
-              optional: true
+        # NOTE: no ADMIN_API_TOKEN here — the public server does not serve
+        # the instance-admin API (see internal-deployment.yaml).
         resources:
           requests:
             memory: "64Mi"

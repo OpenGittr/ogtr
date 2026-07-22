@@ -11,11 +11,13 @@ import (
 )
 
 // AdminHandler serves the instance-admin API under /api/internal/*
-// (ARCHITECTURE.md "Instance admin API"): the operator surface of a
-// deployment. There is no org scoping here — this is the sanctioned INV-6
-// exception; authentication is the ADMIN_API_TOKEN gate middleware
-// (auth.AdminTokenGate), which 404s everything when the token is unset or
-// wrong, so these handlers only ever run for a token-bearing operator.
+// (ARCHITECTURE.md "Instance admin service"): the operator surface of a
+// deployment, registered ONLY by the separate backend/admin service — never
+// by the public server. There is no org scoping here — this is the
+// sanctioned INV-6 exception; authentication is that service's
+// ADMIN_API_TOKEN gate middleware, which 404s everything when the token is
+// unset or wrong, so these handlers only ever run for a token-bearing
+// operator.
 type AdminHandler struct {
 	admin AdminService
 }

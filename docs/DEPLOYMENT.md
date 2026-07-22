@@ -1,9 +1,11 @@
 # Deployment
 
-ogtr deploys as two Docker containers on Kubernetes — `server`
-(Gofr API + redirects) and `app` (dashboard SPA) — plus
-an externally provisioned MySQL 8+. All manifests live in
-[`k8s/`](../k8s/README.md); this document is the walkthrough.
+ogtr deploys as Docker containers on Kubernetes — `server`
+(Gofr API + redirects), `app` (dashboard SPA), and the optional
+**cluster-internal** `ogtr-internal` (instance-admin service from
+`backend/admin`; never exposed on any ingress) — plus an externally
+provisioned MySQL 8+. All manifests live in [`k8s/`](../k8s/README.md);
+this document is the walkthrough.
 
 ## 1. Build the images
 
@@ -12,9 +14,17 @@ All images target **linux/amd64** (build stages run natively via
 decided yet — substitute your own.
 
 ```sh
-# Backend — migrations compiled in, run at boot. GeoIP NOT baked in (licensed).
+# Public server — migrations compiled in, run at boot. GeoIP NOT baked in
+# (licensed). Build context is backend/ (the module root).
 docker build --platform linux/amd64 \
+  -f backend/server/Dockerfile \
   -t <registry>/ogtr-server:<tag> backend
+
+# Instance-admin service (optional; cluster-internal only — see
+# k8s/internal-deployment.yaml). Same build context.
+docker build --platform linux/amd64 \
+  -f backend/admin/Dockerfile \
+  -t <registry>/ogtr-internal:<tag> backend
 
 # Dashboard SPA — VITE_* baked into the bundle at BUILD time (publishable
 # values, not secrets). VITE_API_URL = the short domain origin.
@@ -53,6 +63,7 @@ kubectl apply -f k8s/configmap.yaml
 
 # 4. Workloads — set your image references first
 kubectl apply -f k8s/server-deployment.yaml
+kubectl apply -f k8s/internal-deployment.yaml   # optional — only if you use the admin API
 kubectl apply -f k8s/app-deployment.yaml
 
 # 5. Ingress — set your domains + ingress class first (see §5)
@@ -103,16 +114,21 @@ Every backend env var (ARCHITECTURE.md §7) and where it lives:
 | `SHORTENER_DOMAINS` | configmap | extra shortener hosts refused as destinations; see §6 |
 | `RESCAN_INTERVAL` | configmap | Go duration, default `24h` (≥24h runs daily); see §6 |
 | `LINK_CREATE_RATE` | configmap | creates+edits per principal per minute, default `30`; see §6 |
-| `ADMIN_API_TOKEN` | **secret** (`admin-api-token`) | instance admin API (`/api/internal/*`); unset = the API answers 404 everywhere. Generate with `openssl rand -hex 32`. **Any holder of this token has full cross-organization admin control — treat it like a root password** |
+| `ADMIN_API_TOKEN` | **secret** (`admin-api-token`) | read ONLY by the `ogtr-internal` admin service (`internal-deployment.yaml`), never by the public server; unset = the admin API answers 404 everywhere. Generate with `openssl rand -hex 32`. **Any holder of this token has full cross-organization admin control — treat it like a root password** |
 | `TZ` | deployment env | pinned `UTC` (gofr's MySQL DSN uses `loc=Local`) |
 
-**Instance admin API** (`ADMIN_API_TOKEN`): setting the token turns on the operator API
-under `/api/internal/*` — cross-org user/org listings, abuse-report triage, link
-disable/enable and instance-wide daily stats (ARCHITECTURE.md "Instance admin API"). It is
-plain REST authenticated by the `X-Admin-Token` header, so an operations UI or plain curl
-can drive it: `curl -H "X-Admin-Token: $TOKEN" https://links.example.com/api/internal/orgs`.
-Leave the token unset on deployments that don't need it — the entire API then answers 404
-and effectively does not exist.
+**Instance admin service** (`ogtr-internal`, from `backend/admin`): the operator API under
+`/api/internal/*` — cross-org user/org listings, abuse-report triage, link disable/enable
+and instance-wide daily stats (ARCHITECTURE.md "Instance admin service") — runs as its own
+**cluster-internal** deployment. It is reachable ONLY inside the cluster
+(`http://ogtr-internal.ogtr.svc.cluster.local`); never route it through an ingress —
+network isolation is the primary control, the token is defense in depth. It is plain REST
+authenticated by the `X-Admin-Token` header, so an in-cluster operations UI/gateway or a
+kubectl-run curl pod can drive it:
+`kubectl -n ogtr run curl --rm -it --image=curlimages/curl --restart=Never -- \`
+`  curl -H "X-Admin-Token: $TOKEN" http://ogtr-internal/api/internal/orgs`.
+Deployments that don't need the admin API simply skip `internal-deployment.yaml` (and/or
+leave the token unset — the entire API then answers 404 and effectively does not exist).
 
 Frontend build-time values (baked into the bundle, not runtime env):
 
