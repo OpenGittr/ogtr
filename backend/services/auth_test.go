@@ -82,6 +82,7 @@ func TestAuthService_Login(t *testing.T) {
 			setup: func(m authMocks) {
 				m.provider.EXPECT().Verify(gomock.Any(), "cred").Return(identity, nil)
 				m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{}, nil)
 				m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).Return([]models.OrgMembership{membership}, nil)
 				m.tokens.EXPECT().IssuePair(int64(7), int64(3), models.RoleOwner).Return(pairFor(7, 3), nil)
@@ -95,6 +96,7 @@ func TestAuthService_Login(t *testing.T) {
 				m.provider.EXPECT().Verify(gomock.Any(), "cred").Return(identity, nil)
 				m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(nil, nil)
 				m.users.EXPECT().Create(gomock.Any(), "Alice", "alice@acme.com").Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{}, nil)
 				m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).Return([]models.OrgMembership{}, nil)
 				m.orgs.EXPECT().GetByAutoJoinDomain(gomock.Any(), "acme.com").Return(nil, nil)
@@ -108,6 +110,7 @@ func TestAuthService_Login(t *testing.T) {
 			setup: func(m authMocks) {
 				m.provider.EXPECT().Verify(gomock.Any(), "cred").Return(identity, nil)
 				m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{}, nil)
 				m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).Return([]models.OrgMembership{}, nil)
 				m.orgs.EXPECT().GetByAutoJoinDomain(gomock.Any(), "acme.com").Return(org, nil)
@@ -123,6 +126,7 @@ func TestAuthService_Login(t *testing.T) {
 				invite := models.Invite{ID: 12, OrgID: 3, Email: "alice@acme.com", Status: models.InviteStatusPending}
 				m.provider.EXPECT().Verify(gomock.Any(), "cred").Return(identity, nil)
 				m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{invite}, nil)
 				m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return("", nil)
 				m.members.EXPECT().Add(gomock.Any(), int64(3), int64(7), models.RoleMember).Return(nil)
@@ -182,6 +186,28 @@ func TestAuthService_Login(t *testing.T) {
 	}
 }
 
+// TestAuthService_Login_TouchFailureDoesNotFailLogin pins the telemetry
+// contract: a failing last_active_at touch is logged and swallowed — the
+// sign-in still succeeds.
+func TestAuthService_Login_TouchFailureDoesNotFailLogin(t *testing.T) {
+	svc, m, ctx := newAuthService(t)
+
+	identity := auth.Identity{Email: "alice@acme.com", Name: "Alice"}
+	user := &models.User{ID: 7, Name: "Alice", Email: "alice@acme.com", Status: models.UserStatusEnabled}
+
+	m.provider.EXPECT().Verify(gomock.Any(), "cred").Return(identity, nil)
+	m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+	m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(errStore)
+	m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{}, nil)
+	m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).Return([]models.OrgMembership{}, nil)
+	m.orgs.EXPECT().GetByAutoJoinDomain(gomock.Any(), "acme.com").Return(nil, nil)
+	m.tokens.EXPECT().IssuePair(int64(7), int64(0), "").Return(pairFor(7, 0), nil)
+
+	result, err := svc.Login(ctx, auth.ProviderGoogle, "cred")
+	require.NoError(t, err)
+	assert.NotEmpty(t, result.AccessToken)
+}
+
 func TestAuthService_Login_UnknownProviderIs404(t *testing.T) {
 	svc, _, ctx := newAuthService(t)
 
@@ -209,6 +235,7 @@ func TestAuthService_Login_DevProvider(t *testing.T) {
 			setup: func(m authMocks) {
 				m.users.EXPECT().GetByEmail(gomock.Any(), "eval@example.com").Return(nil, nil)
 				m.users.EXPECT().Create(gomock.Any(), "Eval User", "eval@example.com").Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(9)).Return(nil)
 				m.invites.EXPECT().PendingForEmail(gomock.Any(), "eval@example.com").Return([]models.Invite{}, nil)
 				m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(9)).Return([]models.OrgMembership{}, nil)
 				m.orgs.EXPECT().GetByAutoJoinDomain(gomock.Any(), "example.com").Return(nil, nil)
@@ -266,6 +293,7 @@ func TestAuthService_Refresh(t *testing.T) {
 			setup: func(m authMocks) {
 				m.tokens.EXPECT().Parse("ref", auth.TokenTypeRefresh).Return(refreshClaims, nil)
 				m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 				m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return(models.RoleMember, nil)
 				m.tokens.EXPECT().IssuePair(int64(7), int64(3), models.RoleMember).Return(pairFor(7, 3), nil)
 			},
@@ -275,6 +303,7 @@ func TestAuthService_Refresh(t *testing.T) {
 			setup: func(m authMocks) {
 				m.tokens.EXPECT().Parse("ref", auth.TokenTypeRefresh).Return(refreshClaims, nil)
 				m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 				m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return("", nil)
 				m.tokens.EXPECT().IssuePair(int64(7), int64(0), "").Return(pairFor(7, 0), nil)
 			},

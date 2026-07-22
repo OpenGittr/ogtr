@@ -32,9 +32,9 @@ func TestAdminStore_LikePattern(t *testing.T) {
 func TestAdminStore_ListUsers(t *testing.T) {
 	ctx, mocks := newTestCtx(t)
 
-	rows := sqlmock.NewRows([]string{"id", "email", "name", "created_at"}).
-		AddRow(2, "b@x.co", "Bee", time.Now()).
-		AddRow(1, "a@x.co", "Aye", time.Now())
+	rows := sqlmock.NewRows([]string{"id", "email", "name", "created_at", "last_active_at"}).
+		AddRow(2, "b@x.co", "Bee", time.Now(), time.Now()).
+		AddRow(1, "a@x.co", "Aye", time.Now(), nil)
 	mocks.SQL.ExpectQuery(listUsersQuery).WithArgs("%x.co%", "%x.co%", 25, 0).WillReturnRows(rows)
 
 	users, err := NewAdminStore().ListUsers(ctx, "x.co", 25, 0)
@@ -43,6 +43,8 @@ func TestAdminStore_ListUsers(t *testing.T) {
 	assert.Equal(t, int64(2), users[0].ID)
 	assert.Equal(t, "b@x.co", users[0].Email)
 	assert.NotNil(t, users[0].Orgs, "orgs must marshal as [] even before memberships attach")
+	assert.NotNil(t, users[0].LastActiveAt)
+	assert.Nil(t, users[1].LastActiveAt, "never-active user scans as nil")
 }
 
 func TestAdminStore_ListUsers_Error(t *testing.T) {
@@ -138,6 +140,82 @@ func TestAdminStore_OrgCounts_EmptyIDsSkipsQueries(t *testing.T) {
 	counts, err := NewAdminStore().OrgCounts(ctx, nil, "2026-06-22 00:00:00")
 	require.NoError(t, err)
 	assert.Empty(t, counts)
+}
+
+func TestAdminStore_OrgOwners(t *testing.T) {
+	ctx, mocks := newTestCtx(t)
+
+	rows := sqlmock.NewRows([]string{"org_id", "id", "email", "name"}).
+		AddRow(10, 5, "own@acme.co", "Owner").
+		AddRow(11, 6, "own@beta.co", "Beta Owner")
+	mocks.SQL.ExpectQuery("SELECT org_id, id, email, name FROM ("+
+		"SELECT om.org_id, u.id, u.email, u.name, "+
+		"ROW_NUMBER() OVER (PARTITION BY om.org_id ORDER BY om.created_at, u.id) AS rn "+
+		"FROM org_members om INNER JOIN users u ON u.id = om.user_id "+
+		"WHERE om.org_id IN (?, ?) AND om.role = 'OWNER') ranked WHERE rn = 1").
+		WithArgs(int64(10), int64(11)).WillReturnRows(rows)
+
+	owners, err := NewAdminStore().OrgOwners(ctx, []int64{10, 11})
+	require.NoError(t, err)
+	require.Len(t, owners, 2)
+	assert.Equal(t, "own@acme.co", owners[10].Email)
+	assert.Equal(t, int64(6), owners[11].ID)
+}
+
+func TestAdminStore_OrgOwners_EmptyIDsSkipsQuery(t *testing.T) {
+	ctx, _ := newTestCtx(t)
+
+	owners, err := NewAdminStore().OrgOwners(ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, owners)
+}
+
+func TestAdminStore_OrgExists(t *testing.T) {
+	tests := []struct {
+		desc  string
+		count int64
+		want  bool
+	}{
+		{desc: "existing org", count: 1, want: true},
+		{desc: "unknown org", count: 0, want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			ctx, mocks := newTestCtx(t)
+			mocks.SQL.ExpectQuery(orgExistsQuery).WithArgs(int64(10)).
+				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(tc.count))
+
+			exists, err := NewAdminStore().OrgExists(ctx, 10)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, exists)
+		})
+	}
+}
+
+func TestAdminStore_OrgUsers(t *testing.T) {
+	ctx, mocks := newTestCtx(t)
+
+	rows := sqlmock.NewRows([]string{"id", "email", "name", "role", "created_at", "last_active_at"}).
+		AddRow(5, "own@acme.co", "Owner", "OWNER", time.Now(), time.Now()).
+		AddRow(6, "mem@acme.co", "Member", "MEMBER", time.Now(), nil)
+	mocks.SQL.ExpectQuery(orgUsersQuery).WithArgs(int64(10)).WillReturnRows(rows)
+
+	users, err := NewAdminStore().OrgUsers(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, users, 2)
+	assert.Equal(t, "OWNER", users[0].Role)
+	assert.NotNil(t, users[0].LastActiveAt)
+	assert.Nil(t, users[1].LastActiveAt)
+}
+
+func TestAdminStore_OrgUsers_Error(t *testing.T) {
+	ctx, mocks := newTestCtx(t)
+	mocks.SQL.ExpectQuery(orgUsersQuery).WillReturnError(errDB)
+
+	users, err := NewAdminStore().OrgUsers(ctx, 10)
+	require.Error(t, err)
+	assert.Nil(t, users)
 }
 
 func TestAdminStore_ListReports(t *testing.T) {

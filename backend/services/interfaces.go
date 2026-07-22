@@ -19,6 +19,9 @@ type UserStore interface {
 	GetByEmail(ctx *gofr.Context, email string) (*models.User, error)
 	GetByID(ctx *gofr.Context, id int64) (*models.User, error)
 	Create(ctx *gofr.Context, name, email string) (*models.User, error)
+	// TouchLastActive records "seen now" for the user; the store throttles
+	// the write internally (at most one per hour), so callers just call it.
+	TouchLastActive(ctx *gofr.Context, id int64) error
 }
 
 // OrgStore is the orgs data-access dependency.
@@ -185,6 +188,9 @@ type AdminStore interface {
 	ListOrgs(ctx *gofr.Context, query string, limit, offset int) ([]models.AdminOrg, error)
 	CountOrgs(ctx *gofr.Context, query string) (int64, error)
 	OrgCounts(ctx *gofr.Context, orgIDs []int64, clicksSince string) (map[int64]models.AdminOrgCounts, error)
+	OrgOwners(ctx *gofr.Context, orgIDs []int64) (map[int64]models.AdminOrgOwner, error)
+	OrgExists(ctx *gofr.Context, id int64) (bool, error)
+	OrgUsers(ctx *gofr.Context, orgID int64) ([]models.AdminOrgUser, error)
 	ListReports(ctx *gofr.Context, limit, offset int) ([]models.AdminReport, error)
 	CountReports(ctx *gofr.Context) (int64, error)
 	GetLink(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error)

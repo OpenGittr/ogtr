@@ -54,6 +54,22 @@ func (*UserStore) Create(ctx *gofr.Context, name, email string) (*models.User, e
 	return scanUser(row)
 }
 
+// touchLastActiveQuery is the throttled activity touch: one conditional
+// primary-key UPDATE, written only when the stored value is NULL or older
+// than an hour, so the login/refresh hot paths never write more than once
+// per user per hour and need no prior read.
+const touchLastActiveQuery = "UPDATE users SET last_active_at = NOW() WHERE id = ? " +
+	"AND (last_active_at IS NULL OR last_active_at < NOW() - INTERVAL 1 HOUR)"
+
+// TouchLastActive records that the user was just seen (login, token
+// refresh), throttled to at most one write per hour by the conditional
+// UPDATE itself. A no-op match (recently touched) is success.
+func (*UserStore) TouchLastActive(ctx *gofr.Context, id int64) error {
+	_, err := ctx.SQL.ExecContext(ctx, touchLastActiveQuery, id)
+
+	return err
+}
+
 func scanUser(row *sql.Row) (*models.User, error) {
 	var u models.User
 

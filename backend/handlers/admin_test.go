@@ -117,6 +117,66 @@ func TestAdminHandler_Orgs_ServiceErrorIsUntypedNil(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+func TestAdminHandler_OrgUsers(t *testing.T) {
+	page := &services.AdminOrgUsersPage{Users: []models.AdminOrgUser{{ID: 5, Role: models.RoleOwner}}}
+
+	tests := []struct {
+		desc     string
+		id       string
+		expect   func(m *MockAdminService)
+		wantErr  bool
+		wantCode int
+		wantNil  bool
+	}{
+		{
+			desc: "org member list passes through", id: "10",
+			expect: func(m *MockAdminService) { m.EXPECT().OrgUsers(gomock.Any(), int64(10)).Return(page, nil) },
+		},
+		{
+			desc: "non-numeric id is 400", id: "x",
+			wantErr: true, wantCode: http.StatusBadRequest, wantNil: true,
+		},
+		{
+			desc: "service error returns untyped nil", id: "10",
+			expect: func(m *MockAdminService) {
+				m.EXPECT().OrgUsers(gomock.Any(), int64(10)).Return(nil, errAdminDown)
+			},
+			wantErr: true, wantNil: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			h, admin := newAdminHandler(t)
+			if tc.expect != nil {
+				tc.expect(admin)
+			}
+
+			ctx := newTestCtx(t, http.MethodGet, "/api/internal/orgs/"+tc.id+"/users", "", nil,
+				map[string]string{"id": tc.id})
+
+			result, err := h.OrgUsers(ctx)
+			if tc.wantErr {
+				require.Error(t, err)
+
+				if tc.wantCode != 0 {
+					sc, ok := err.(interface{ StatusCode() int })
+					require.True(t, ok)
+					assert.Equal(t, tc.wantCode, sc.StatusCode())
+				}
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tc.wantNil {
+				assert.Nil(t, result)
+			} else {
+				assert.Equal(t, page, result)
+			}
+		})
+	}
+}
+
 func TestAdminHandler_Reports(t *testing.T) {
 	h, admin := newAdminHandler(t)
 

@@ -240,6 +240,7 @@ func TestAuthService_Login_AutoJoinDeniedByPolicy(t *testing.T) {
 	m.provider.EXPECT().Verify(gomock.Any(), "cred").
 		Return(auth.Identity{Email: "alice@acme.com", Name: "Alice"}, nil)
 	m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+	m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 	m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{}, nil)
 	m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).Return([]models.OrgMembership{}, nil)
 	m.orgs.EXPECT().GetByAutoJoinDomain(gomock.Any(), "acme.com").Return(org, nil)
@@ -263,6 +264,7 @@ func TestAuthService_Login_InviteAcceptanceDeniedByPolicy(t *testing.T) {
 	m.provider.EXPECT().Verify(gomock.Any(), "cred").
 		Return(auth.Identity{Email: "alice@acme.com", Name: "Alice"}, nil)
 	m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+	m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 	m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{invite}, nil)
 	m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return("", nil)
 	// NO members.Add and NO invites.SetStatus — the invite stays PENDING so it
@@ -290,6 +292,7 @@ func TestAuthService_Login_PolicyInternalErrorPropagates(t *testing.T) {
 	m.provider.EXPECT().Verify(gomock.Any(), "cred").
 		Return(auth.Identity{Email: "alice@acme.com", Name: "Alice"}, nil)
 	m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+	m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
 	m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{}, nil)
 	m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).Return([]models.OrgMembership{}, nil)
 	m.orgs.EXPECT().GetByAutoJoinDomain(gomock.Any(), "acme.com").Return(org, nil)

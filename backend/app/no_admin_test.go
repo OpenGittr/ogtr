@@ -47,6 +47,7 @@ func TestPublicServer_ServesNoAdminAPI(t *testing.T) {
 	}{
 		{http.MethodGet, "/api/internal/users"},
 		{http.MethodGet, "/api/internal/orgs"},
+		{http.MethodGet, "/api/internal/orgs/1/users"},
 		{http.MethodGet, "/api/internal/reports"},
 		{http.MethodGet, "/api/internal/links/1"},
 		{http.MethodPost, "/api/internal/links/1/disable"},

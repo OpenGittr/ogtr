@@ -33,6 +33,11 @@ type AdminOrgsPage struct {
 	Total int64             `json:"total"`
 }
 
+// AdminOrgUsersPage is one org's full member list (OWNERs first).
+type AdminOrgUsersPage struct {
+	Users []models.AdminOrgUser `json:"users"`
+}
+
 // AdminReportsPage is one page of the abuse-report listing, newest first.
 type AdminReportsPage struct {
 	Reports []models.AdminReport `json:"reports"`
@@ -133,15 +138,45 @@ func (s *AdminService) Orgs(ctx *gofr.Context, query string, page int) (*AdminOr
 		return nil, err
 	}
 
+	owners, err := s.store.OrgOwners(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
 	for i := range orgs {
 		c := counts[orgs[i].ID]
 		orgs[i].Members = c.Members
 		orgs[i].Links = c.Links
 		orgs[i].Clicks30d = c.Clicks30d
 		orgs[i].Domains = c.Domains
+
+		if owner, ok := owners[orgs[i].ID]; ok {
+			orgs[i].Owner = &owner
+		}
 	}
 
 	return &AdminOrgsPage{Orgs: orgs, Total: total}, nil
+}
+
+// OrgUsers returns one org's full member list (no paging — org sizes are
+// bounded by membership limits), OWNERs first then join order; unknown org
+// ids are 404.
+func (s *AdminService) OrgUsers(ctx *gofr.Context, orgID int64) (*AdminOrgUsersPage, error) {
+	exists, err := s.store.OrgExists(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !exists {
+		return nil, apierrors.NotFound("org not found")
+	}
+
+	users, err := s.store.OrgUsers(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AdminOrgUsersPage{Users: users}, nil
 }
 
 // Reports returns one page (25/page) of abuse reports, newest first, each

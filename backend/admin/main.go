@@ -45,6 +45,7 @@ func main() {
 	// unchanged.
 	app.GET("/api/internal/users", adminH.Users)
 	app.GET("/api/internal/orgs", adminH.Orgs)
+	app.GET("/api/internal/orgs/{id}/users", adminH.OrgUsers)
 	app.GET("/api/internal/reports", adminH.Reports)
 	app.GET("/api/internal/links/{id}", adminH.Link)
 	app.POST("/api/internal/links/{id}/disable", adminH.DisableLink)

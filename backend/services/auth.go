@@ -99,6 +99,8 @@ func (s *AuthService) Login(ctx *gofr.Context, provider, credential string) (*Au
 		ctx.Logger.Infof("JIT-created user %d for %s", user.ID, email)
 	}
 
+	s.touchLastActive(ctx, user.ID)
+
 	if err := s.acceptPendingInvites(ctx, user, email); err != nil {
 		return nil, err
 	}
@@ -116,6 +118,16 @@ func (s *AuthService) Login(ctx *gofr.Context, provider, credential string) (*Au
 	}
 
 	return s.buildAuthResult(user, orgs)
+}
+
+// touchLastActive records "seen now" on the two session-granting paths
+// (login, refresh). The store throttles the write to at most one per user
+// per hour; a failure is logged and swallowed — activity telemetry must
+// never fail a sign-in.
+func (s *AuthService) touchLastActive(ctx *gofr.Context, userID int64) {
+	if err := s.users.TouchLastActive(ctx, userID); err != nil {
+		ctx.Logger.Warnf("could not touch last_active_at for user %d: %v", userID, err)
+	}
 }
 
 // joinAsMember is the single membership-creating choke point on the login
@@ -243,6 +255,8 @@ func (s *AuthService) Refresh(ctx *gofr.Context, refreshToken string) (models.To
 	if user == nil || user.Status != models.UserStatusEnabled {
 		return models.TokenPair{}, apierrors.Unauthorized("account is not active")
 	}
+
+	s.touchLastActive(ctx, user.ID)
 
 	var (
 		orgID int64

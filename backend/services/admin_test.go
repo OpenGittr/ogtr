@@ -118,6 +118,9 @@ func TestAdminService_Orgs_FillsGroupedCounts(t *testing.T) {
 		Return(map[int64]models.AdminOrgCounts{
 			10: {Members: 3, Links: 7, Clicks30d: 90, Domains: 1},
 		}, nil)
+	store.EXPECT().OrgOwners(ctx, []int64{10, 11}).Return(map[int64]models.AdminOrgOwner{
+		10: {ID: 5, Email: "own@acme.co", Name: "Owner"},
+	}, nil)
 
 	page, err := svc.Orgs(ctx, "", 2)
 	require.NoError(t, err)
@@ -125,9 +128,53 @@ func TestAdminService_Orgs_FillsGroupedCounts(t *testing.T) {
 	require.Len(t, page.Orgs, 2)
 	assert.Equal(t, int64(90), page.Orgs[0].Clicks30d)
 	assert.Equal(t, int64(1), page.Orgs[0].Domains)
-	// An org with no grouped rows keeps zero counts.
+	// The owner (first OWNER by join time) is attached…
+	require.NotNil(t, page.Orgs[0].Owner)
+	assert.Equal(t, "own@acme.co", page.Orgs[0].Owner.Email)
+	// An org with no grouped rows keeps zero counts, and an ownerless org
+	// carries a nil owner (marshals as null).
 	assert.Zero(t, page.Orgs[1].Members)
 	assert.Zero(t, page.Orgs[1].Clicks30d)
+	assert.Nil(t, page.Orgs[1].Owner)
+}
+
+func TestAdminService_OrgUsers(t *testing.T) {
+	svc, store, _, ctx := newAdminService(t)
+
+	joined := time.Now()
+	active := joined.Add(time.Hour)
+
+	store.EXPECT().OrgExists(ctx, int64(10)).Return(true, nil)
+	store.EXPECT().OrgUsers(ctx, int64(10)).Return([]models.AdminOrgUser{
+		{ID: 5, Email: "own@acme.co", Role: models.RoleOwner, JoinedAt: joined, LastActiveAt: &active},
+		{ID: 6, Email: "mem@acme.co", Role: models.RoleMember, JoinedAt: joined},
+	}, nil)
+
+	page, err := svc.OrgUsers(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, page.Users, 2)
+	assert.Equal(t, models.RoleOwner, page.Users[0].Role)
+	assert.Nil(t, page.Users[1].LastActiveAt, "never-active member marshals last_active_at as null")
+}
+
+func TestAdminService_OrgUsers_UnknownOrgIs404(t *testing.T) {
+	svc, store, _, ctx := newAdminService(t)
+	store.EXPECT().OrgExists(ctx, int64(99)).Return(false, nil)
+
+	page, err := svc.OrgUsers(ctx, 99)
+	require.Error(t, err)
+	assert.Nil(t, page)
+	assertStatus(t, err, http.StatusNotFound)
+}
+
+func TestAdminService_OrgUsers_StoreError(t *testing.T) {
+	svc, store, _, ctx := newAdminService(t)
+	store.EXPECT().OrgExists(ctx, int64(10)).Return(true, nil)
+	store.EXPECT().OrgUsers(ctx, int64(10)).Return(nil, errBoom)
+
+	page, err := svc.OrgUsers(ctx, 10)
+	require.Error(t, err)
+	assert.Nil(t, page)
 }
 
 func TestAdminService_Reports_PagesNewestFirst(t *testing.T) {

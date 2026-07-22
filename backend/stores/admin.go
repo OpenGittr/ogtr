@@ -25,8 +25,8 @@ func NewAdminStore() *AdminStore { return &AdminStore{} }
 // an empty query becomes %%, which matches every (NOT NULL) row — one query
 // shape covers filtered and unfiltered listing.
 const (
-	listUsersQuery = "SELECT id, email, name, created_at FROM users WHERE (email LIKE ? OR name LIKE ?) " +
-		"ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?"
+	listUsersQuery = "SELECT id, email, name, created_at, last_active_at FROM users " +
+		"WHERE (email LIKE ? OR name LIKE ?) ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?"
 
 	countUsersQuery = "SELECT COUNT(id) FROM users WHERE (email LIKE ? OR name LIKE ?)"
 
@@ -34,6 +34,14 @@ const (
 		"ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?"
 
 	countOrgsQuery = "SELECT COUNT(id) FROM orgs WHERE (name LIKE ? OR slug LIKE ?)"
+
+	orgExistsQuery = "SELECT COUNT(id) FROM orgs WHERE id = ?"
+
+	// One org's member list, OWNERs first, then join order. Served by the
+	// org_members primary key (org_id, user_id) — a single join, no N+1.
+	orgUsersQuery = "SELECT u.id, u.email, u.name, om.role, om.created_at, u.last_active_at " +
+		"FROM org_members om INNER JOIN users u ON u.id = om.user_id WHERE om.org_id = ? " +
+		"ORDER BY om.role = 'OWNER' DESC, om.created_at, u.id"
 
 	listReportsQuery = "SELECT r.id, r.code, r.link_id, r.org_id, r.reason, r.reporter_contact, r.created_at, " +
 		"l.status, l.destination_url FROM abuse_reports r INNER JOIN links l ON l.id = r.link_id " +
@@ -67,6 +75,15 @@ const (
 
 	userOrgsQuery = "SELECT om.user_id, o.id, o.name, om.role FROM org_members om " +
 		"INNER JOIN orgs o ON o.id = om.org_id WHERE om.user_id IN (%s) ORDER BY om.user_id, o.id"
+
+	// One owner per org for the orgs listing: each org's first OWNER by join
+	// time, picked with a window function over the page's org ids in a
+	// single grouped query (no per-org subquery, no N+1).
+	orgOwnersQuery = "SELECT org_id, id, email, name FROM (" +
+		"SELECT om.org_id, u.id, u.email, u.name, " +
+		"ROW_NUMBER() OVER (PARTITION BY om.org_id ORDER BY om.created_at, u.id) AS rn " +
+		"FROM org_members om INNER JOIN users u ON u.id = om.user_id " +
+		"WHERE om.org_id IN (%s) AND om.role = 'OWNER') ranked WHERE rn = 1"
 )
 
 // likePattern escapes MySQL LIKE metacharacters in a user-supplied search
@@ -95,7 +112,7 @@ func (*AdminStore) ListUsers(ctx *gofr.Context, query string, limit, offset int)
 	for rows.Next() {
 		u := models.AdminUser{Orgs: []models.AdminUserOrg{}}
 
-		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.LastActiveAt); err != nil {
 			return nil, err
 		}
 
@@ -209,6 +226,71 @@ func (*AdminStore) OrgCounts(ctx *gofr.Context, orgIDs []int64, clicksSince stri
 	}
 
 	return counts, nil
+}
+
+// OrgOwners returns each org's first OWNER by join time in one grouped
+// window-function query (no per-org N+1), keyed by org id. Ownerless orgs
+// are simply absent.
+func (*AdminStore) OrgOwners(ctx *gofr.Context, orgIDs []int64) (map[int64]models.AdminOrgOwner, error) {
+	owners := map[int64]models.AdminOrgOwner{}
+	if len(orgIDs) == 0 {
+		return owners, nil
+	}
+
+	query, args := inQuery(orgOwnersQuery, orgIDs)
+
+	rows, err := ctx.SQL.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var (
+			orgID int64
+			owner models.AdminOrgOwner
+		)
+
+		if err := rows.Scan(&orgID, &owner.ID, &owner.Email, &owner.Name); err != nil {
+			return nil, err
+		}
+
+		owners[orgID] = owner
+	}
+
+	return owners, rows.Err()
+}
+
+// OrgExists reports whether the org id exists (the 404 check in front of the
+// org member listing).
+func (*AdminStore) OrgExists(ctx *gofr.Context, id int64) (bool, error) {
+	n, err := countQuery(ctx, orgExistsQuery, id)
+
+	return n > 0, err
+}
+
+// OrgUsers returns every member of one org joined with their user row,
+// OWNERs first then join order.
+func (*AdminStore) OrgUsers(ctx *gofr.Context, orgID int64) ([]models.AdminOrgUser, error) {
+	rows, err := ctx.SQL.QueryContext(ctx, orgUsersQuery, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	users := []models.AdminOrgUser{}
+
+	for rows.Next() {
+		var u models.AdminOrgUser
+
+		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.JoinedAt, &u.LastActiveAt); err != nil {
+			return nil, err
+		}
+
+		users = append(users, u)
+	}
+
+	return users, rows.Err()
 }
 
 // ListReports returns one page of abuse reports, newest first, joined with

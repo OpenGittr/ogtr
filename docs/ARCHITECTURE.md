@@ -387,9 +387,17 @@ registers none of these routes.
 
 ```
 GET  /api/internal/users?query=&page=        users across all orgs (25/page) + their org
-                                             memberships and roles; query matches email/name
+                                             memberships and roles, created_at and
+                                             last_active_at (null = never seen; touched on
+                                             login/refresh, throttled to 1 write/hour);
+                                             query matches email/name
 GET  /api/internal/orgs?query=&page=         orgs (25/page) with aggregate counts: members,
-                                             links, clicks_30d, domains; query matches name/slug
+                                             links, clicks_30d, domains — plus owner
+                                             {id,email,name} (first OWNER by join time; null
+                                             when ownerless); query matches name/slug
+GET  /api/internal/orgs/{id}/users           one org's full member list {id, email, name,
+                                             role, joined_at, last_active_at}, OWNERs first
+                                             then join order; 404 for an unknown org
 GET  /api/internal/reports?page=             abuse reports newest-first (25/page), each joined
                                              with the reported link's live status + destination
 GET  /api/internal/links/{id}                operator link detail (any org): row + org_name +

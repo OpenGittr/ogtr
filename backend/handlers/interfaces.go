@@ -83,6 +83,7 @@ type StatsService interface {
 type AdminService interface {
 	Users(ctx *gofr.Context, query string, page int) (*services.AdminUsersPage, error)
 	Orgs(ctx *gofr.Context, query string, page int) (*services.AdminOrgsPage, error)
+	OrgUsers(ctx *gofr.Context, orgID int64) (*services.AdminOrgUsersPage, error)
 	Reports(ctx *gofr.Context, page int) (*services.AdminReportsPage, error)
 	Link(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error)
 	DisableLink(ctx *gofr.Context, id int64, reason string) (*models.AdminLinkDetail, error)

@@ -60,6 +60,22 @@ func (h *AdminHandler) Orgs(ctx *gofr.Context) (any, error) {
 	return orgs, nil
 }
 
+// OrgUsers handles GET /api/internal/orgs/{id}/users — one org's full member
+// list, OWNERs first; 404 for an unknown org.
+func (h *AdminHandler) OrgUsers(ctx *gofr.Context) (any, error) {
+	id, err := pathID(ctx, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	users, err := h.admin.OrgUsers(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 // Reports handles GET /api/internal/reports?page= — abuse reports newest
 // first, 25/page.
 func (h *AdminHandler) Reports(ctx *gofr.Context) (any, error) {

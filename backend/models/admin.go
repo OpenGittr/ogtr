@@ -10,11 +10,12 @@ import "time"
 // AdminUser is one user as listed to the instance operator, with every org
 // membership attached.
 type AdminUser struct {
-	ID        int64          `json:"id"`
-	Email     string         `json:"email"`
-	Name      string         `json:"name"`
-	CreatedAt time.Time      `json:"created_at"`
-	Orgs      []AdminUserOrg `json:"orgs"`
+	ID           int64          `json:"id"`
+	Email        string         `json:"email"`
+	Name         string         `json:"name"`
+	CreatedAt    time.Time      `json:"created_at"`
+	LastActiveAt *time.Time     `json:"last_active_at"`
+	Orgs         []AdminUserOrg `json:"orgs"`
 }
 
 // AdminUserOrg is one org membership on an AdminUser row.
@@ -25,16 +26,37 @@ type AdminUserOrg struct {
 }
 
 // AdminOrg is one org as listed to the instance operator, with cheap
-// aggregate counts (members, links, clicks in the last 30 days, domains).
+// aggregate counts (members, links, clicks in the last 30 days, domains) and
+// its owner (the earliest-joined OWNER; nil for an ownerless org).
 type AdminOrg struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	CreatedAt time.Time `json:"created_at"`
-	Members   int64     `json:"members"`
-	Links     int64     `json:"links"`
-	Clicks30d int64     `json:"clicks_30d"`
-	Domains   int64     `json:"domains"`
+	ID        int64          `json:"id"`
+	Name      string         `json:"name"`
+	Slug      string         `json:"slug"`
+	CreatedAt time.Time      `json:"created_at"`
+	Members   int64          `json:"members"`
+	Links     int64          `json:"links"`
+	Clicks30d int64          `json:"clicks_30d"`
+	Domains   int64          `json:"domains"`
+	Owner     *AdminOrgOwner `json:"owner"`
+}
+
+// AdminOrgOwner is the owner shown on an AdminOrg row: the org's first OWNER
+// by join time.
+type AdminOrgOwner struct {
+	ID    int64  `json:"id"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
+}
+
+// AdminOrgUser is one member of an org as listed to the instance operator
+// (GET /api/internal/orgs/{id}/users), OWNERs first.
+type AdminOrgUser struct {
+	ID           int64      `json:"id"`
+	Email        string     `json:"email"`
+	Name         string     `json:"name"`
+	Role         string     `json:"role"`
+	JoinedAt     time.Time  `json:"joined_at"`
+	LastActiveAt *time.Time `json:"last_active_at"`
 }
 
 // AdminOrgCounts carries the grouped aggregate counts for one org (filled

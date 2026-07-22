@@ -81,6 +81,45 @@ func TestUserStore_GetByID(t *testing.T) {
 	assert.Equal(t, "c@d.co", user.Email)
 }
 
+func TestUserStore_TouchLastActive(t *testing.T) {
+	tests := []struct {
+		desc    string
+		mock    func(m sqlmock.Sqlmock)
+		wantErr bool
+	}{
+		{
+			desc: "stale row is touched",
+			mock: func(m sqlmock.Sqlmock) {
+				m.ExpectExec(touchLastActiveQuery).WithArgs(int64(7)).WillReturnResult(sqlmock.NewResult(0, 1))
+			},
+		},
+		{
+			desc: "recently-touched row matches nothing and is still success",
+			mock: func(m sqlmock.Sqlmock) {
+				m.ExpectExec(touchLastActiveQuery).WithArgs(int64(7)).WillReturnResult(sqlmock.NewResult(0, 0))
+			},
+		},
+		{
+			desc: "db error propagates",
+			mock: func(m sqlmock.Sqlmock) {
+				m.ExpectExec(touchLastActiveQuery).WithArgs(int64(7)).WillReturnError(errDB)
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			ctx, mocks := newTestCtx(t)
+			tc.mock(mocks.SQL)
+
+			err := NewUserStore().TouchLastActive(ctx, 7)
+
+			assert.Equal(t, tc.wantErr, err != nil)
+		})
+	}
+}
+
 func TestUserStore_Create(t *testing.T) {
 	tests := []struct {
 		desc    string
