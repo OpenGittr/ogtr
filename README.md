@@ -32,6 +32,27 @@ Licensed under **MIT** (see [LICENSE](LICENSE)). The hosted service lives at
   Kubernetes manifests (deployments — including the cluster-internal `ogtr-internal` —
   services, ingress for the short and app domains, configmap, secrets template).
 
+## Run ogtr in one command (all-in-one image)
+
+The fastest way to self-host: one container (dashboard UI + redirect service +
+API + embedded MariaDB) on one port, no docker-compose, no external database.
+
+```bash
+docker run -p 8080:8080 -v ogtr-data:/data opengittr/ogtr
+```
+
+- **Dashboard:** http://localhost:8080/app — sign in with the built-in dev
+  provider (zero setup: any name + email), create an org, shorten a link.
+- **Short links:** http://localhost:8080/{code} — the created code 302-redirects.
+- Data persists in the `ogtr-data` volume across restarts.
+
+Enable Google auth, a real domain, or an external database with `-e` — see
+[all-in-one/README.md](all-in-one/README.md) for the full env surface. The image
+is published on Docker Hub as **[`opengittr/ogtr`](https://hub.docker.com/r/opengittr/ogtr)**.
+Build/source lives under [`all-in-one/`](all-in-one/). For horizontally-scaled
+or production setups, the split images + `k8s/` manifests below remain the
+advanced path.
+
 ## Quickstart
 
 Local run (MySQL via docker-compose, backend on :5810, app on :5800) —

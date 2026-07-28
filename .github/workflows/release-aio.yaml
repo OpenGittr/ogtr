@@ -1,0 +1,62 @@
+# Builds and publishes the ogtr ALL-IN-ONE image (dashboard + redirect/API +
+# embedded MariaDB in one container) to Docker Hub as opengittr/ogtr.
+#
+# Fires only on version tags and manual dispatch (never on every push), so a
+# normal commit does not publish. This is separate from ci.yaml (build-only
+# checks for the split images) and does not touch the split Dockerfiles/k8s.
+name: Release all-in-one
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build (e.g. v0.1.0)"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: build & push opengittr/ogtr
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Single canonical repo (opengittr/ogtr). Pull/star counts stay
+      # concentrated on the brand name; "url shortener" discoverability comes
+      # from the keyword-rich README/description below, not a second repo.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: all-in-one/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            opengittr/ogtr:latest
+            opengittr/ogtr:${{ github.event.inputs.tag || github.ref_name }}
+            opengittr/ogtr:sha-${{ github.sha }}
+
+      # Keyword-rich Docker Hub overview + short description so the canonical
+      # repo surfaces for "url shortener" / "link shortener" searches.
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: opengittr/ogtr
+          short-description: "Self-hosted open-source URL shortener / link shortener — analytics, QR codes, custom domains, UTM, deep links. One-command Docker deploy."
+          readme-filepath: ./all-in-one/README.md

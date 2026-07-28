@@ -1,0 +1,40 @@
+# Reverse proxy for the ogtr all-in-one image. One public port (:8080) fronts
+# the dashboard SPA and the ogtr backend (redirects + API), which listens on
+# 127.0.0.1:8000 inside the container.
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:8080 {
+	# --- Dashboard SPA, mounted under /app --------------------------------
+	# The bare /app -> /app/ so relative asset URLs resolve.
+	handle /app {
+		redir /app/ 308
+	}
+
+	# Strip the /app prefix and serve the built SPA with client-side-routing
+	# fallback to index.html. Hashed assets are immutable; index.html must
+	# always revalidate (no-cache) so new deploys are picked up.
+	handle_path /app/* {
+		root * /srv/www/app
+		try_files {path} /index.html
+
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@notasset not path /assets/*
+		header @notasset Cache-Control "no-cache"
+
+		file_server
+	}
+
+	# --- Everything else is the ogtr backend ------------------------------
+	# /api/*  (dashboard + developer API)
+	# /.well-known/*  (gofr health / alive probes)
+	# /  (bare-domain bounce)
+	# /{code}  (short-link redirects) and /{code}+ (preview)
+	handle {
+		reverse_proxy 127.0.0.1:8000
+	}
+}

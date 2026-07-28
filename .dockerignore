@@ -1,0 +1,16 @@
+# Build context for the all-in-one image (all-in-one/Dockerfile) is the repo
+# root. Keep local-only, licensed, and regenerated material out of it. The
+# split backend/ and frontend/ image builds use their own .dockerignore.
+.git
+**/node_modules
+**/dist
+backend/server/data
+backend/**/coverage.out
+**/.local.env
+**/.env.local
+.DS_Store
+.idea
+docs
+k8s
+CLAUDE.md
+CLAUDE.local.md

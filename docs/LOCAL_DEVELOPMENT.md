@@ -4,6 +4,22 @@ How to run all of ogtr on one machine. Project decisions and conventions
 live in [ARCHITECTURE.md](ARCHITECTURE.md); the feature spec in
 [FEATURES.md](FEATURES.md).
 
+## Just want to run the product? Use the all-in-one image
+
+To *use* ogtr (not develop it), skip this whole file: the `opengittr/ogtr`
+all-in-one image runs the entire product (dashboard + redirects + API +
+embedded MariaDB) in one container on one port, with dev sign-in enabled by
+default —
+
+```sh
+docker run -p 8080:8080 -v ogtr-data:/data opengittr/ogtr
+# dashboard http://localhost:8080/app  ·  short links http://localhost:8080/{code}
+```
+
+See [`all-in-one/README.md`](../all-in-one/README.md). The rest of this document
+is the from-source developer workflow (hot-reload SPA, backend on its own port,
+docker-compose MySQL).
+
 ## Zero-setup first run (no Google account needed)
 
 The fastest way to try ogtr — no Google OAuth client, no cloud console.

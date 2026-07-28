@@ -1,5 +1,12 @@
 # Deployment
 
+> **Easy path — all-in-one image.** For a single-host self-deploy, the
+> `opengittr/ogtr` all-in-one image runs the whole product (dashboard +
+> redirects + API + embedded MariaDB) in one container on one port:
+> `docker run -p 8080:8080 -v ogtr-data:/data opengittr/ogtr`. See
+> [`all-in-one/README.md`](../all-in-one/README.md). The Kubernetes split below
+> is the advanced path for horizontally-scaled or multi-component deployments.
+
 ogtr deploys as Docker containers on Kubernetes — `server`
 (Gofr API + redirects), `app` (dashboard SPA), and the optional
 **cluster-internal** `ogtr-internal` (instance-admin service from
