@@ -48,13 +48,13 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900" data-testid="welcome-heading">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white" data-testid="welcome-heading">
           Welcome{firstName ? `, ${firstName}` : ""}
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           {activeOrg ? (
             <>
-              You are working in <span className="font-medium text-slate-700">{activeOrg.name}</span>{" "}
+              You are working in <span className="font-medium text-slate-700 dark:text-slate-200">{activeOrg.name}</span>{" "}
               as {activeOrg.role === "OWNER" ? "an owner" : "a member"}.
             </>
           ) : (
@@ -63,19 +63,19 @@ export default function HomePage() {
         </p>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <h3 className="text-base font-semibold text-slate-900">Shorten a URL</h3>
-        <p className="mt-0.5 mb-4 text-sm text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Shorten a URL</h3>
+        <p className="mt-0.5 mb-4 text-sm text-slate-500 dark:text-slate-400">
           Paste a long URL to get a short link right away.
         </p>
         <ShortenForm onCreated={() => void load()} onChanged={() => void load()} />
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-6">
-          <h3 className="text-base font-semibold text-slate-900">Recent links</h3>
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-6">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">Recent links</h3>
           {total > 0 && (
-            <Link to="/links" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+            <Link to="/links" className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">
               View all {total}
             </Link>
           )}

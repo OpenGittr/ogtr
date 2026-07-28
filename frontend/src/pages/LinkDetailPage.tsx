@@ -100,23 +100,23 @@ export default function LinkDetailPage() {
   ].filter((u) => u.value);
 
   const metaChip =
-    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-xs text-slate-500 ring-1 ring-inset ring-slate-200";
+    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-slate-50 dark:bg-slate-900 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 ring-1 ring-inset ring-slate-200 dark:ring-slate-700";
 
   const statusChip =
-    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium " +
-    "text-indigo-700 ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-100";
+    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 text-xs font-medium " +
+    "text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-500/30 transition hover:bg-indigo-100 dark:hover:bg-indigo-500/20";
 
   const hasDeeplinks = Boolean(link.deeplink_config?.android || link.deeplink_config?.ios);
   const hasAlias = looksLikeAlias(link.code);
 
   return (
     <div className="space-y-6">
-      <RouterLink to="/links" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+      <RouterLink to="/links" className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">
         &larr; All links
       </RouterLink>
 
       {/* Page header: short URL + destination + status/meta chips + actions */}
-      <header className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <header className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
@@ -125,7 +125,7 @@ export default function LinkDetailPage() {
                 target="_blank"
                 rel="noreferrer"
                 title={link.short_url}
-                className="min-w-0 max-w-full truncate font-mono text-lg font-semibold tracking-tight text-slate-900 transition hover:text-indigo-600 sm:text-xl"
+                className="min-w-0 max-w-full truncate font-mono text-lg font-semibold tracking-tight text-slate-900 dark:text-white transition hover:text-indigo-600 dark:hover:text-indigo-400 sm:text-xl"
                 data-testid="detail-short-url"
               >
                 {link.short_url}
@@ -135,7 +135,7 @@ export default function LinkDetailPage() {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Open short link in a new tab"
-                className="shrink-0 rounded-md p-1.5 text-slate-400 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50 hover:text-indigo-600"
+                className="shrink-0 rounded-md p-1.5 text-slate-400 dark:text-slate-500 ring-1 ring-inset ring-slate-200 dark:ring-slate-700 transition hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-indigo-600 dark:hover:text-indigo-400"
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path d="M11 3a1 1 0 1 0 0 2h2.586l-6.293 6.293a1 1 0 1 0 1.414 1.414L15 6.414V9a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-5z" />
@@ -146,11 +146,11 @@ export default function LinkDetailPage() {
             </div>
 
             <div className="mt-1.5 flex min-w-0 items-center gap-2">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 to
               </span>
               <p
-                className="min-w-0 truncate text-sm text-slate-500"
+                className="min-w-0 truncate text-sm text-slate-500 dark:text-slate-400"
                 title={link.destination_url}
                 data-testid="detail-destination"
               >
@@ -167,7 +167,7 @@ export default function LinkDetailPage() {
           />
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-slate-100 dark:border-slate-800 pt-4">
           {/* Clickable status chips: configured-ness at a glance, forms on demand */}
           {hasAlias && (
             <button type="button" onClick={() => setAction("alias")} className={statusChip} data-testid="chip-alias">
@@ -193,27 +193,27 @@ export default function LinkDetailPage() {
           )}
 
           <span className={metaChip}>
-            <span className="font-semibold text-slate-900" data-testid="detail-visits">
+            <span className="font-semibold text-slate-900 dark:text-white" data-testid="detail-visits">
               {link.visits}
             </span>
             {link.visits === 1 ? "visit" : "visits"}
           </span>
           <span className={metaChip}>
             Last visit
-            <span className="font-medium text-slate-700">{formatDateTime(link.last_visit_at)}</span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">{formatDateTime(link.last_visit_at)}</span>
           </span>
           <span className={metaChip}>
             Created
-            <span className="font-medium text-slate-700">{formatDateTime(link.created_at)}</span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">{formatDateTime(link.created_at)}</span>
           </span>
           {link.type === "PRIVATE" && (
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-inset ring-slate-200">
+            <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 ring-1 ring-inset ring-slate-200 dark:ring-slate-700">
               private
             </span>
           )}
           {link.api_key_id != null && (
             <span
-              className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-600 ring-1 ring-inset ring-sky-200"
+              className="rounded-full bg-sky-50 dark:bg-sky-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400 ring-1 ring-inset ring-sky-200 dark:ring-sky-500/30"
               title="Created programmatically with an API key"
               data-testid="detail-via-api-badge"
             >
@@ -223,7 +223,7 @@ export default function LinkDetailPage() {
           {utms.map((u) => (
             <span
               key={u.label}
-              className="max-w-full truncate rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200"
+              className="max-w-full truncate rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-500/30"
             >
               {u.label}: {u.value}
             </span>

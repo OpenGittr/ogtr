@@ -8,6 +8,7 @@ import { useAuth } from "../auth/AuthContext";
 import { extraNavItems } from "../ext";
 import Logo from "./Logo";
 import OrgSwitcher from "./OrgSwitcher";
+import ThemeToggle from "./ThemeToggle";
 import { InitialAvatar } from "./ui";
 
 interface NavItem {
@@ -90,7 +91,7 @@ export default function AppShell() {
     )?.label ?? "";
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col bg-slate-900 lg:flex">
         <div className="flex h-16 items-center px-5">
@@ -130,12 +131,12 @@ export default function AppShell() {
 
       {/* Main column */}
       <div className="lg:pl-60">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6 dark:border-slate-800 dark:bg-slate-900/90">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
             aria-label="Open menu"
-            className="rounded-md p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+            className="rounded-md p-2 text-slate-500 hover:bg-slate-100 lg:hidden dark:text-slate-400 dark:hover:bg-slate-800"
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path
@@ -146,10 +147,11 @@ export default function AppShell() {
             </svg>
           </button>
 
-          <h1 className="flex-1 truncate text-base font-semibold text-slate-900">
+          <h1 className="flex-1 truncate text-base font-semibold text-slate-900 dark:text-white">
             {currentLabel}
           </h1>
 
+          <ThemeToggle />
           <OrgSwitcher />
         </header>
 

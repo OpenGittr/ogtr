@@ -205,7 +205,7 @@ export default function LoginPage() {
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             ogtr
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">
             Short links, targeting, and analytics for your team.
           </p>
         </div>
@@ -220,8 +220,8 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="mt-8 rounded-2xl bg-white p-6 shadow-xl sm:p-8">
-          <h2 className="text-center text-lg font-semibold text-slate-900">Sign in</h2>
+        <div className="mt-8 rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl sm:p-8">
+          <h2 className="text-center text-lg font-semibold text-slate-900 dark:text-white">Sign in</h2>
 
           <div className="mt-6 flex min-h-[44px] flex-col gap-4">
             {providersInfo === null ? (
@@ -229,7 +229,7 @@ export default function LoginPage() {
                 <Spinner />
               </div>
             ) : busy ? (
-              <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+              <div className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                 <Spinner /> Signing you in…
               </div>
             ) : (
@@ -241,7 +241,7 @@ export default function LoginPage() {
                     </div>
                   ) : (
                     <div
-                      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                      className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
                       data-testid="gis-not-configured"
                     >
                       <p className="font-medium">Google sign-in is not configured.</p>
@@ -259,7 +259,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={startMicrosoft}
                         data-testid="microsoft-signin"
-                        className="flex w-[280px] items-center justify-center gap-3 rounded border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        className="flex w-[280px] items-center justify-center gap-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                       >
                         {/* Microsoft four-square mark */}
                         <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
@@ -273,7 +273,7 @@ export default function LoginPage() {
                     </div>
                   ) : (
                     <div
-                      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                      className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
                       data-testid="ms-not-configured"
                     >
                       <p className="font-medium">Microsoft sign-in is not configured.</p>
@@ -288,7 +288,7 @@ export default function LoginPage() {
                 {(googleEnabled || microsoftEnabled) && devEnabled && (
                   <div className="flex items-center gap-3" aria-hidden="true">
                     <span className="h-px flex-1 bg-slate-200" />
-                    <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    <span className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       or
                     </span>
                     <span className="h-px flex-1 bg-slate-200" />
@@ -298,12 +298,12 @@ export default function LoginPage() {
                 {devEnabled && (
                   <div>
                     <div
-                      className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                      className="rounded-lg border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
                       role="note"
                       data-testid="dev-mode-banner"
                     >
                       <p className="font-semibold">Development mode sign-in</p>
-                      <p className="mt-0.5 text-amber-800">
+                      <p className="mt-0.5 text-amber-800 dark:text-amber-300">
                         For local evaluation only — anyone can sign in as any identity. Never
                         enable this in production.
                       </p>
@@ -311,7 +311,7 @@ export default function LoginPage() {
 
                     <form className="mt-4 space-y-3" onSubmit={submitDev} data-testid="dev-form">
                       <label className="block">
-                        <span className="text-sm font-medium text-slate-700">Name</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Name</span>
                         <input
                           type="text"
                           required
@@ -319,11 +319,11 @@ export default function LoginPage() {
                           onChange={(e) => setDevName(e.target.value)}
                           placeholder="Eval User"
                           data-testid="dev-name"
-                          className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="mt-1 block w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </label>
                       <label className="block">
-                        <span className="text-sm font-medium text-slate-700">Email</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</span>
                         <input
                           type="email"
                           required
@@ -331,7 +331,7 @@ export default function LoginPage() {
                           onChange={(e) => setDevEmail(e.target.value)}
                           placeholder="you@example.com"
                           data-testid="dev-email"
-                          className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="mt-1 block w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </label>
                       <button
@@ -346,7 +346,7 @@ export default function LoginPage() {
                 )}
 
                 {!googleEnabled && !microsoftEnabled && !devEnabled && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
                     No sign-in methods are enabled on this server. Set{" "}
                     <code className="font-mono">AUTH_PROVIDERS</code> in the backend config.
                   </div>
@@ -358,7 +358,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-500">
+        <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
           Signing in creates your account if it does not exist yet.
         </p>
       </div>

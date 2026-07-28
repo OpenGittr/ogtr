@@ -41,8 +41,8 @@ function formatDate(iso: string | null): string {
 function StatusBadge({ status }: { status: ApiKey["status"] }) {
   const styles =
     status === "ENABLED"
-      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-      : "bg-slate-100 text-slate-500 ring-slate-200";
+      ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/30"
+      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 ring-slate-200 dark:ring-slate-700";
 
   return (
     <span
@@ -57,17 +57,17 @@ function StatusBadge({ status }: { status: ApiKey["status"] }) {
 function NewKeyPanel({ created, onDismiss }: { created: CreatedApiKey; onDismiss: () => void }) {
   return (
     <div
-      className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-4"
+      className="space-y-3 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-4"
       data-testid="new-key-panel"
       role="status"
     >
-      <p className="text-sm font-semibold text-amber-800">
+      <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
         Your new key “{created.name}” is ready
       </p>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <code
-          className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-md bg-white px-3 py-2 font-mono text-sm text-slate-800 ring-1 ring-inset ring-amber-200"
+          className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-md bg-white dark:bg-slate-900 px-3 py-2 font-mono text-sm text-slate-800 dark:text-slate-100 ring-1 ring-inset ring-amber-200 dark:ring-amber-500/30"
           data-testid="new-key-value"
         >
           {created.key}
@@ -75,7 +75,7 @@ function NewKeyPanel({ created, onDismiss }: { created: CreatedApiKey; onDismiss
         <CopyButton text={created.key} label="Copy key" />
       </div>
 
-      <p className="text-sm text-amber-700">
+      <p className="text-sm text-amber-700 dark:text-amber-300">
         Copy it now — for security, <strong>you won’t see this key again</strong>. Only a hash is
         stored on the server.
       </p>
@@ -83,7 +83,7 @@ function NewKeyPanel({ created, onDismiss }: { created: CreatedApiKey; onDismiss
       <button
         type="button"
         onClick={onDismiss}
-        className="rounded-md px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-300 transition hover:bg-amber-100"
+        className="rounded-md px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-300 dark:ring-amber-500/40 transition hover:bg-amber-100 dark:hover:bg-amber-500/20"
       >
         I’ve saved my key
       </button>
@@ -199,10 +199,10 @@ export default function ApiKeysPage() {
   return (
     <div className="space-y-8">
       {/* Create */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
-          <h2 className="text-base font-semibold text-slate-900">Create an API key</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Create an API key</h2>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Use a key in the <code className="font-mono text-xs">X-API-Key</code> header to
             shorten links and resolve codes programmatically.
           </p>
@@ -221,7 +221,7 @@ export default function ApiKeysPage() {
               placeholder="e.g. CI pipeline"
               maxLength={255}
               required
-              className="w-full flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="w-full flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
             />
             <button
               type="submit"
@@ -242,10 +242,10 @@ export default function ApiKeysPage() {
       </section>
 
       {/* List */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
-          <h2 className="text-base font-semibold text-slate-900">API keys</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">API keys</h2>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Disabled keys stop working immediately but stay listed — links they created keep
             their attribution.
           </p>
@@ -265,7 +265,7 @@ export default function ApiKeysPage() {
             testid="api-keys-empty"
           />
         ) : (
-          <ul className="divide-y divide-slate-100" data-testid="api-keys-list">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800" data-testid="api-keys-list">
             {keys.map((key) => {
               const disabled = key.status === "DISABLED";
 
@@ -280,15 +280,15 @@ export default function ApiKeysPage() {
                   <div className="min-w-0 flex-1 basis-48">
                     <p
                       className={`truncate text-sm font-medium ${
-                        disabled ? "text-slate-400" : "text-slate-900"
+                        disabled ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"
                       }`}
                     >
                       {key.name}
                     </p>
-                    <p className="truncate font-mono text-xs text-slate-400">{key.key_hint}…</p>
+                    <p className="truncate font-mono text-xs text-slate-400 dark:text-slate-500">{key.key_hint}…</p>
                   </div>
 
-                  <div className="hidden text-right text-xs text-slate-400 sm:block">
+                  <div className="hidden text-right text-xs text-slate-400 dark:text-slate-500 sm:block">
                     <p>Created {formatDate(key.created_at)}</p>
                     <p>Last used {formatDate(key.last_used_at)}</p>
                   </div>
@@ -310,7 +310,7 @@ export default function ApiKeysPage() {
                           type="button"
                           onClick={() => setConfirmDisableId(0)}
                           disabled={disableBusyId !== 0}
-                          className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+                          className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                         >
                           Cancel
                         </button>
@@ -322,7 +322,7 @@ export default function ApiKeysPage() {
                           setConfirmDisableId(key.id);
                           setDisableError("");
                         }}
-                        className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                        className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-500/10"
                       >
                         Disable
                       </button>

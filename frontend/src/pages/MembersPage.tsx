@@ -165,11 +165,11 @@ export default function MembersPage() {
   return (
     <div className="space-y-8">
       {/* Members */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-6">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-6">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Members</h2>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Members</h2>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
               {members.length} {members.length === 1 ? "person" : "people"} in this organization
             </p>
           </div>
@@ -181,7 +181,7 @@ export default function MembersPage() {
           </div>
         )}
 
-        <ul className="divide-y divide-slate-100" data-testid="members-list">
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800" data-testid="members-list">
           {members.map((member) => (
             <li
               key={member.user_id}
@@ -189,16 +189,16 @@ export default function MembersPage() {
             >
               <InitialAvatar name={member.name} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-900">
+                <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
                   {member.name}
                   {member.user_id === user?.id && (
-                    <span className="ml-1.5 text-xs font-normal text-slate-400">(you)</span>
+                    <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">(you)</span>
                   )}
                 </p>
-                <p className="truncate text-sm text-slate-500">{member.email}</p>
+                <p className="truncate text-sm text-slate-500 dark:text-slate-400">{member.email}</p>
               </div>
 
-              <span className="hidden text-xs text-slate-400 sm:block">
+              <span className="hidden text-xs text-slate-400 dark:text-slate-500 sm:block">
                 Joined {formatDate(member.joined_at)}
               </span>
 
@@ -219,7 +219,7 @@ export default function MembersPage() {
                       type="button"
                       onClick={() => setConfirmRemoveId(0)}
                       disabled={removeBusyId !== 0}
-                      className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+                      className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                     >
                       Cancel
                     </button>
@@ -231,7 +231,7 @@ export default function MembersPage() {
                       setConfirmRemoveId(member.user_id);
                       setRemoveError("");
                     }}
-                    className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                    className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-500/10"
                   >
                     Remove
                   </button>
@@ -242,10 +242,10 @@ export default function MembersPage() {
       </section>
 
       {/* Invites */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
-          <h2 className="text-base font-semibold text-slate-900">Invites</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Invites</h2>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Invited people join as members the first time they sign in.
           </p>
         </div>
@@ -263,7 +263,7 @@ export default function MembersPage() {
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="teammate@example.com"
                 required
-                className="w-full flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="w-full flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
               />
               <button
                 type="submit"
@@ -275,7 +275,7 @@ export default function MembersPage() {
               </button>
             </form>
           ) : (
-            <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            <p className="rounded-lg bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
               Only organization owners can invite or remove people.
             </p>
           )}
@@ -284,7 +284,7 @@ export default function MembersPage() {
           {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
           {inviteNotice && (
             <p
-              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+              className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400"
               role="status"
             >
               {inviteNotice}
@@ -293,19 +293,19 @@ export default function MembersPage() {
           {revokeError && <ErrorBanner message={revokeError} />}
 
           {invites.length === 0 ? (
-            <p className="text-sm text-slate-400">No pending invites.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">No pending invites.</p>
           ) : (
-            <ul className="divide-y divide-slate-100" data-testid="invites-list">
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800" data-testid="invites-list">
               {invites.map((invite) => (
                 <li key={invite.id} className="flex flex-wrap items-center gap-3 py-3">
                   <InitialAvatar name={invite.email} className="h-8 w-8 text-xs" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-900">{invite.email}</p>
-                    <p className="text-xs text-slate-400">
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{invite.email}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                       Invited {formatDate(invite.created_at)}
                     </p>
                   </div>
-                  <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
+                  <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-200 dark:ring-amber-500/30">
                     pending
                   </span>
                   {isOwner && (
@@ -313,7 +313,7 @@ export default function MembersPage() {
                       type="button"
                       onClick={() => void revokeInvite(invite.id)}
                       disabled={revokeBusyId !== 0}
-                      className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                      className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50"
                     >
                       {revokeBusyId === invite.id ? "Revoking…" : "Revoke"}
                     </button>

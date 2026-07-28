@@ -32,8 +32,8 @@ function formFromConfig(config: DeeplinkConfig | null | undefined): FormState {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm " +
-  "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
+  "w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm " +
+  "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30";
 
 function Field({
   id,
@@ -50,7 +50,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-xs font-medium text-slate-500">
+      <label htmlFor={id} className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
         {label}
       </label>
       <input
@@ -167,11 +167,11 @@ export default function DeeplinkSection({ link, onUpdated }: Props) {
   const ios = link.deeplink_config?.ios;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Mobile deep links</h3>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">Mobile deep links</h3>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Send app users straight into your app instead of the web destination.
           </p>
         </div>
@@ -190,7 +190,7 @@ export default function DeeplinkSection({ link, onUpdated }: Props) {
                 type="button"
                 onClick={() => void clear()}
                 disabled={busy}
-                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-red-200 dark:border-red-500/30 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                 data-testid="deeplink-clear"
               >
                 Clear
@@ -211,7 +211,7 @@ export default function DeeplinkSection({ link, onUpdated }: Props) {
       {/* Collapsed states: one-line empty hint, or a readable summary */}
       {!editing && !hasConfig && (
         <p
-          className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm text-slate-400"
+          className="mt-4 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 px-3 py-2.5 text-sm text-slate-400 dark:text-slate-500"
           data-testid="deeplink-empty"
         >
           Not configured — mobile visitors follow the web destination.
@@ -221,27 +221,27 @@ export default function DeeplinkSection({ link, onUpdated }: Props) {
       {!editing && hasConfig && (
         <div className="mt-4 space-y-2" data-testid="deeplink-badges">
           {android && (
-            <div className="flex min-w-0 items-start gap-2.5 rounded-lg bg-slate-50 px-3 py-2">
-              <span className="mt-0.5 shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            <div className="flex min-w-0 items-start gap-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2">
+              <span className="mt-0.5 shrink-0 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-200 dark:ring-emerald-500/30">
                 Android
               </span>
               <div className="min-w-0 text-sm">
-                <p className="truncate font-mono text-xs text-slate-700" title={`${android.scheme}://${android.intent} · ${android.package}`}>
+                <p className="truncate font-mono text-xs text-slate-700 dark:text-slate-200" title={`${android.scheme}://${android.intent} · ${android.package}`}>
                   {android.scheme}://{android.intent}
-                  <span className="text-slate-400"> · {android.package}</span>
+                  <span className="text-slate-400 dark:text-slate-500"> · {android.package}</span>
                 </p>
-                <p className="mt-0.5 truncate text-xs text-slate-500" title={android.fallback_url}>
+                <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400" title={android.fallback_url}>
                   No app? Falls back to {android.fallback_url}
                 </p>
               </div>
             </div>
           )}
           {ios && (
-            <div className="flex min-w-0 items-start gap-2.5 rounded-lg bg-slate-50 px-3 py-2">
-              <span className="mt-0.5 shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            <div className="flex min-w-0 items-start gap-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2">
+              <span className="mt-0.5 shrink-0 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-200 dark:ring-emerald-500/30">
                 iOS
               </span>
-              <p className="min-w-0 truncate font-mono text-xs leading-5 text-slate-700" title={ios.intent}>
+              <p className="min-w-0 truncate font-mono text-xs leading-5 text-slate-700 dark:text-slate-200" title={ios.intent}>
                 {ios.intent}
               </p>
             </div>
@@ -251,8 +251,8 @@ export default function DeeplinkSection({ link, onUpdated }: Props) {
 
       {editing && (
       <form onSubmit={(e) => void save(e)} className="mt-4 space-y-4">
-        <fieldset className="rounded-lg border border-slate-200 p-3">
-          <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <fieldset className="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             Android
           </legend>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -287,8 +287,8 @@ export default function DeeplinkSection({ link, onUpdated }: Props) {
           </div>
         </fieldset>
 
-        <fieldset className="rounded-lg border border-slate-200 p-3">
-          <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <fieldset className="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             iOS
           </legend>
           <Field
@@ -324,12 +324,12 @@ export default function DeeplinkSection({ link, onUpdated }: Props) {
       )}
 
       {error && (
-        <p className="mt-2 text-sm text-red-600" role="alert" data-testid="deeplink-error">
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert" data-testid="deeplink-error">
           {error}
         </p>
       )}
       {notice && (
-        <p className="mt-2 text-sm text-emerald-700" role="status" data-testid="deeplink-notice">
+        <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400" role="status" data-testid="deeplink-notice">
           {notice}
         </p>
       )}

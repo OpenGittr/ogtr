@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+/* Explicit light/dark theming driven by a `.dark` class on <html> (set pre-paint
+   by the no-flash script in index.html and toggled by ThemeToggle), so a first
+   visit follows the OS but a user can override it and we remember the choice. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Pre-paint page background so there's no flash before React mounts — the .dark
+   class is set in <head> before first paint and this CSS is render-blocking. */
+html {
+  background-color: #f8fafc; /* slate-50 */
+}
+html.dark {
+  background-color: #020617; /* slate-950 */
+}

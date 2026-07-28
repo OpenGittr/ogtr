@@ -86,8 +86,8 @@ export default function MicrosoftCallbackPage() {
           </h1>
         </div>
 
-        <div className="mt-8 rounded-2xl bg-white p-6 shadow-xl sm:p-8">
-          <h2 className="text-center text-lg font-semibold text-slate-900">
+        <div className="mt-8 rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl sm:p-8">
+          <h2 className="text-center text-lg font-semibold text-slate-900 dark:text-white">
             Microsoft sign-in
           </h2>
 
@@ -99,14 +99,14 @@ export default function MicrosoftCallbackPage() {
                   to="/login"
                   replace
                   data-testid="ms-back-to-login"
-                  className="text-center text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                  className="text-center text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                 >
                   Back to sign in
                 </Link>
               </>
             ) : (
               <div
-                className="flex items-center justify-center gap-2 text-sm text-slate-500"
+                className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400"
                 data-testid="ms-exchanging"
               >
                 <Spinner /> Completing sign-in…

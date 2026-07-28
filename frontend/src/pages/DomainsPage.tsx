@@ -45,10 +45,10 @@ function formatDate(iso: string | null): string {
 function StatusBadge({ status }: { status: OrgDomain["status"] }) {
   const styles =
     status === "VERIFIED"
-      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/30"
       : status === "PENDING"
-        ? "bg-amber-50 text-amber-700 ring-amber-200"
-        : "bg-slate-100 text-slate-500 ring-slate-200";
+        ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-500/30"
+        : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 ring-slate-200 dark:ring-slate-700";
 
   return (
     <span
@@ -61,7 +61,7 @@ function StatusBadge({ status }: { status: OrgDomain["status"] }) {
 
 function PrimaryBadge() {
   return (
-    <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">
+    <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-500/30">
       primary
     </span>
   );
@@ -70,28 +70,28 @@ function PrimaryBadge() {
 /** The DNS record the owner must publish, with copy buttons. */
 function TxtInstructions({ domain }: { domain: OrgDomain }) {
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-      <p className="text-sm text-amber-800">
+    <div className="mt-3 space-y-3 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3">
+      <p className="text-sm text-amber-800 dark:text-amber-300">
         Add this DNS <strong>TXT record</strong> at your DNS provider, then click Verify.
         DNS changes can take a few minutes to propagate.
       </p>
 
       <div className="space-y-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <span className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700">
+          <span className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
             Name
           </span>
-          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-md bg-white px-3 py-1.5 font-mono text-xs text-slate-800 ring-1 ring-inset ring-amber-200">
+          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-md bg-white dark:bg-slate-900 px-3 py-1.5 font-mono text-xs text-slate-800 dark:text-slate-100 ring-1 ring-inset ring-amber-200 dark:ring-amber-500/30">
             {domain.txt_record_name}
           </code>
           <CopyButton text={domain.txt_record_name} label="Copy name" />
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <span className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700">
+          <span className="w-14 shrink-0 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
             Value
           </span>
-          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-md bg-white px-3 py-1.5 font-mono text-xs text-slate-800 ring-1 ring-inset ring-amber-200">
+          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-md bg-white dark:bg-slate-900 px-3 py-1.5 font-mono text-xs text-slate-800 dark:text-slate-100 ring-1 ring-inset ring-amber-200 dark:ring-amber-500/30">
             {domain.txt_record_value}
           </code>
           <CopyButton text={domain.txt_record_value} label="Copy value" />
@@ -246,10 +246,10 @@ export default function DomainsPage() {
   return (
     <div className="space-y-8">
       {/* Add */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
-          <h2 className="text-base font-semibold text-slate-900">Add a custom domain</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Add a custom domain</h2>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Serve your short links from your own domain, like{" "}
             <code className="font-mono text-xs">links.your-brand.com</code>. You’ll prove
             ownership with a DNS TXT record.
@@ -270,7 +270,7 @@ export default function DomainsPage() {
                 placeholder="links.your-brand.com"
                 maxLength={253}
                 required
-                className="w-full flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="w-full flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
               />
               <button
                 type="submit"
@@ -282,7 +282,7 @@ export default function DomainsPage() {
               </button>
             </form>
           ) : (
-            <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            <p className="rounded-lg bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
               Only organization owners can add, verify, or remove domains.
             </p>
           )}
@@ -291,7 +291,7 @@ export default function DomainsPage() {
           {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
           {addNotice && (
             <p
-              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+              className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400"
               role="status"
             >
               {addNotice}
@@ -301,10 +301,10 @@ export default function DomainsPage() {
       </section>
 
       {/* List */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
-          <h2 className="text-base font-semibold text-slate-900">Domains</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Domains</h2>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Short links display under the primary verified domain. They always keep working on
             the deployment’s domain too.
           </p>
@@ -330,7 +330,7 @@ export default function DomainsPage() {
             testid="domains-empty"
           />
         ) : (
-          <ul className="divide-y divide-slate-100" data-testid="domains-list">
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800" data-testid="domains-list">
             {domains.map((domain) => {
               const pending = domain.status === "PENDING";
               const verified = domain.status === "VERIFIED";
@@ -340,10 +340,10 @@ export default function DomainsPage() {
                 <li key={domain.id} className="px-4 py-4 sm:px-6" data-testid={`domain-row-${domain.id}`}>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                     <div className="min-w-0 flex-1 basis-48">
-                      <p className="truncate font-mono text-sm font-medium text-slate-900">
+                      <p className="truncate font-mono text-sm font-medium text-slate-900 dark:text-white">
                         {domain.hostname}
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
                         Added {formatDate(domain.created_at)}
                         {verified && domain.verified_at
                           ? ` · verified ${formatDate(domain.verified_at)}`
@@ -372,7 +372,7 @@ export default function DomainsPage() {
                         type="button"
                         onClick={() => void setPrimary(domain.id)}
                         disabled={primaryBusyId !== 0}
-                        className="rounded-md px-2.5 py-1 text-xs font-medium text-indigo-600 ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-50 disabled:opacity-50"
+                        className="rounded-md px-2.5 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-500/30 transition hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50"
                         data-testid={`set-primary-${domain.id}`}
                       >
                         {primaryBusyId === domain.id ? "Setting…" : "Set primary"}
@@ -394,7 +394,7 @@ export default function DomainsPage() {
                             type="button"
                             onClick={() => setConfirmDeleteId(0)}
                             disabled={deleteBusyId !== 0}
-                            className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+                            className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                           >
                             Cancel
                           </button>
@@ -406,7 +406,7 @@ export default function DomainsPage() {
                             setConfirmDeleteId(domain.id);
                             setActionError("");
                           }}
-                          className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                          className="rounded-md px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-500/10"
                           data-testid={`delete-domain-${domain.id}`}
                         >
                           Remove

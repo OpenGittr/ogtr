@@ -41,7 +41,7 @@ const SECTIONS: { key: keyof UTMAnalysis; title: string; utmHeader: string; blur
 function UTMTable({ rows, utmHeader }: { rows: UTMCount[]; utmHeader: string }) {
   if (rows.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-slate-400" data-testid="utm-empty">
+      <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500" data-testid="utm-empty">
         No {utmHeader} data yet.
       </p>
     );
@@ -51,7 +51,7 @@ function UTMTable({ rows, utmHeader }: { rows: UTMCount[]; utmHeader: string }) 
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+          <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <th className="py-2 pr-4">{utmHeader}</th>
             <th className="py-2 pr-4">Link</th>
             <th className="py-2 text-right">Clicks</th>
@@ -61,25 +61,25 @@ function UTMTable({ rows, utmHeader }: { rows: UTMCount[]; utmHeader: string }) 
           {rows.map((r) => (
             <tr
               key={`${r.utm_value}-${r.link_id}`}
-              className="border-b border-slate-100 last:border-0"
+              className="border-b border-slate-100 dark:border-slate-800 last:border-0"
             >
               <td className="py-2 pr-4">
-                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">
+                <span className="rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-500/30">
                   {r.utm_value}
                 </span>
               </td>
               <td className="max-w-0 py-2 pr-4">
                 <RouterLink
                   to={`/links/${r.link_id}`}
-                  className="font-mono text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                  className="font-mono text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
                 >
                   /{r.code}
                 </RouterLink>
-                <p className="truncate text-xs text-slate-400" title={r.url}>
+                <p className="truncate text-xs text-slate-400 dark:text-slate-500" title={r.url}>
                   {r.url}
                 </p>
               </td>
-              <td className="py-2 text-right tabular-nums font-medium text-slate-900">{r.clicks}</td>
+              <td className="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-white">{r.clicks}</td>
             </tr>
           ))}
         </tbody>
@@ -133,8 +133,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Analytics</h1>
-        <p className="mt-0.5 text-sm text-slate-500">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Analytics</h1>
+        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
           UTM campaign performance across your links. Per-link click charts live on each link's
           detail page.
         </p>
@@ -144,7 +144,7 @@ export default function AnalyticsPage() {
       {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
 
       {allEmpty && (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white">
+        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
           <EmptyState
             icon={<EmptyIcon path={emptyIconPaths.chart} />}
             title="No UTM data yet"
@@ -167,11 +167,11 @@ export default function AnalyticsPage() {
           {SECTIONS.map((s) => (
             <section
               key={s.key}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
+              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6"
               data-testid={`utm-section-${s.key}`}
             >
-              <h2 className="text-base font-semibold text-slate-900">{s.title}</h2>
-              <p className="mt-0.5 mb-3 text-xs text-slate-500">{s.blurb}</p>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">{s.title}</h2>
+              <p className="mt-0.5 mb-3 text-xs text-slate-500 dark:text-slate-400">{s.blurb}</p>
               <UTMTable rows={analysis[s.key]} utmHeader={s.utmHeader} />
             </section>
           ))}

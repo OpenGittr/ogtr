@@ -56,17 +56,17 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
       <div className="w-full max-w-md">
         <div className="text-center">
-          <Logo withWordmark size="md" className="text-slate-900" />
+          <Logo withWordmark size="md" className="text-slate-900 dark:text-white" />
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <h1 className="text-lg font-semibold text-slate-900">
+        <div className="mt-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm sm:p-8">
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-white">
             {isExtraOrg ? "Create a new organization" : `Welcome${firstName ? `, ${firstName}` : ""}!`}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {isExtraOrg
               ? "You will become its owner and switch to it right away."
               : "Create an organization to get started. You can invite your team later."}
@@ -74,7 +74,7 @@ export default function OnboardingPage() {
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div>
-              <label htmlFor="org-name" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="org-name" className="block text-sm font-medium text-slate-700 dark:text-slate-200">
                 Organization name
               </label>
               <input
@@ -86,7 +86,7 @@ export default function OnboardingPage() {
                 autoFocus
                 required
                 maxLength={120}
-                className="mt-1.5 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="mt-1.5 block w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
               />
             </div>
 
@@ -104,12 +104,12 @@ export default function OnboardingPage() {
           </form>
         </div>
 
-        <div className="mt-6 text-center text-sm text-slate-500">
+        <div className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
           {isExtraOrg && orgs.length > 0 ? (
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
             >
               Back to dashboard
             </button>
@@ -117,7 +117,7 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={logout}
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
             >
               Sign out
             </button>

@@ -50,19 +50,19 @@ export default function LinksPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <h2 className="text-base font-semibold text-slate-900">Shorten a URL</h2>
-        <p className="mt-0.5 mb-4 text-sm text-slate-500">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white">Shorten a URL</h2>
+        <p className="mt-0.5 mb-4 text-sm text-slate-500 dark:text-slate-400">
           Paste a long URL to get a short link on this deployment.
         </p>
         <ShortenForm onCreated={() => void load(1)} onChanged={() => void load(page)} />
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-6">
+      <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-4 sm:px-6">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Your links</h2>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Your links</h2>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
               {total} {total === 1 ? "link" : "links"} in this organization
             </p>
           </div>
@@ -79,23 +79,23 @@ export default function LinksPage() {
             <LinkList links={links} onChanged={() => void load(page)} />
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-6">
+              <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-4 py-3 sm:px-6">
                 <button
                   type="button"
                   onClick={() => void load(page - 1)}
                   disabled={page <= 1}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Previous
                 </button>
-                <span className="text-sm text-slate-500" data-testid="pagination-label">
+                <span className="text-sm text-slate-500 dark:text-slate-400" data-testid="pagination-label">
                   Page {page} of {totalPages}
                 </span>
                 <button
                   type="button"
                   onClick={() => void load(page + 1)}
                   disabled={page >= totalPages}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
                 </button>

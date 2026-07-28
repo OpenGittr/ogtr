@@ -75,7 +75,7 @@ export default function LinkList({
   return (
     <div data-testid="link-list">
       {/* Column header (desktop only) */}
-      <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_5rem_8rem_2.5rem] gap-3 border-b border-slate-100 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 lg:grid">
+      <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_5rem_8rem_2.5rem] gap-3 border-b border-slate-100 dark:border-slate-800 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 lg:grid">
         <span>Short link</span>
         <span>Destination</span>
         <span className="text-right">Visits</span>
@@ -83,7 +83,7 @@ export default function LinkList({
         <span className="sr-only">Actions</span>
       </div>
 
-      <ul className="divide-y divide-slate-100">
+      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
         {links.map((link) => (
           <li key={link.id}>
             <div
@@ -97,17 +97,17 @@ export default function LinkList({
               data-testid={`link-row-${link.code}`}
             >
               <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-medium text-indigo-600">
+                <span className="truncate text-sm font-medium text-indigo-600 dark:text-indigo-400">
                   {link.short_url.replace(/^https?:\/\//, "")}
                 </span>
                 {link.type === "PRIVATE" && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-inset ring-slate-200">
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 ring-1 ring-inset ring-slate-200 dark:ring-slate-700">
                     private
                   </span>
                 )}
                 {link.api_key_id != null && (
                   <span
-                    className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-600 ring-1 ring-inset ring-sky-200"
+                    className="rounded-full bg-sky-50 dark:bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400 ring-1 ring-inset ring-sky-200 dark:ring-sky-500/30"
                     title="Created programmatically with an API key"
                   >
                     via API
@@ -116,16 +116,16 @@ export default function LinkList({
                 <CopyButton text={link.short_url} />
               </div>
 
-              <p className="truncate text-sm text-slate-500" title={link.destination_url}>
+              <p className="truncate text-sm text-slate-500 dark:text-slate-400" title={link.destination_url}>
                 {link.destination_url}
               </p>
 
-              <p className="text-sm text-slate-600 lg:text-right">
-                <span className="lg:hidden text-slate-400">Visits: </span>
+              <p className="text-sm text-slate-600 dark:text-slate-300 lg:text-right">
+                <span className="lg:hidden text-slate-400 dark:text-slate-500">Visits: </span>
                 {link.visits}
               </p>
 
-              <p className="text-xs text-slate-400 lg:text-right">
+              <p className="text-xs text-slate-400 dark:text-slate-500 lg:text-right">
                 <span className="lg:hidden">Last visit: </span>
                 {formatDateTime(link.last_visit_at)}
               </p>

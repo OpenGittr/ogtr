@@ -23,8 +23,8 @@ import {
 export type LinkAction = "qr" | "alias" | "edit" | "targeting";
 
 const inputClass =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm " +
-  "placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
+  "w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm " +
+  "placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30";
 
 // ---------------------------------------------------------------------------
 // Kebab items — one definition so the list rows, the detail header and the
@@ -102,11 +102,11 @@ export function QRPanel({ link, size = "lg" }: { link: ShortURL; size?: "sm" | "
         <img
           src={qrURL}
           alt={`QR code for ${link.short_url}`}
-          className={`${box} rounded-lg border border-slate-200 bg-white`}
+          className={`${box} rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900`}
           data-testid="qr-image"
         />
       ) : (
-        <div className={`flex ${box} items-center justify-center rounded-lg border border-slate-200 bg-white`}>
+        <div className={`flex ${box} items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900`}>
           <Spinner />
         </div>
       )}
@@ -115,14 +115,14 @@ export function QRPanel({ link, size = "lg" }: { link: ShortURL; size?: "sm" | "
         download={`${link.code}-qr.png`}
         aria-disabled={!qrURL}
         data-testid="qr-download"
-        className={`w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50 ${
+        className={`w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800/60 ${
           qrURL ? "" : "pointer-events-none opacity-50"
         }`}
       >
         Download PNG
       </a>
       {size === "lg" && (
-        <p className="max-w-full truncate text-center text-xs text-slate-400" title={link.short_url}>
+        <p className="max-w-full truncate text-center text-xs text-slate-400 dark:text-slate-500" title={link.short_url}>
           Scans open {link.short_url}
         </p>
       )}
@@ -213,7 +213,7 @@ export function AliasEditor({
 
   return (
     <div>
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Replace the generated code with a branded alias. The old code stops working.
       </p>
 
@@ -230,7 +230,7 @@ export function AliasEditor({
             setError("");
             setNotice("");
           }}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 font-mono text-sm text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30"
         />
         <button
           type="submit"
@@ -243,12 +243,12 @@ export function AliasEditor({
       </form>
 
       {error && (
-        <p className="mt-2 text-sm text-red-600" role="alert" data-testid="alias-error">
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert" data-testid="alias-error">
           {error}
         </p>
       )}
       {notice && (
-        <p className="mt-2 text-sm text-emerald-700" role="status" data-testid="alias-notice">
+        <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400" role="status" data-testid="alias-notice">
           {notice}
         </p>
       )}
@@ -321,15 +321,15 @@ export function EditDestinationForm({
 
   return (
     <div>
-      <p className="text-sm text-slate-500">
-        Repoint <span className="font-mono text-slate-700">/{link.code}</span> at a new
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        Repoint <span className="font-mono text-slate-700 dark:text-slate-200">/{link.code}</span> at a new
         destination. Printed QR codes and published short links keep working; clicks keep
         accruing to this link.
       </p>
 
       <form onSubmit={(e) => void submit(e)} className="mt-3 space-y-3" data-testid="edit-destination-form">
         <div>
-          <label htmlFor="edit-destination-url" className="block text-xs font-medium text-slate-600">
+          <label htmlFor="edit-destination-url" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
             Destination URL
           </label>
           <input
@@ -349,7 +349,7 @@ export function EditDestinationForm({
         <div className="grid gap-3 sm:grid-cols-3">
           {utmFields.map((f) => (
             <div key={f.id}>
-              <label htmlFor={f.id} className="block text-xs font-medium text-slate-600">
+              <label htmlFor={f.id} className="block text-xs font-medium text-slate-600 dark:text-slate-300">
                 {f.label}
               </label>
               <input
@@ -378,12 +378,12 @@ export function EditDestinationForm({
       </form>
 
       {error && (
-        <p className="mt-2 text-sm text-red-600" role="alert" data-testid="edit-destination-error">
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert" data-testid="edit-destination-error">
           {error}
         </p>
       )}
       {notice && (
-        <p className="mt-2 text-sm text-emerald-700" role="status" data-testid="edit-destination-notice">
+        <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400" role="status" data-testid="edit-destination-notice">
           {notice}
         </p>
       )}

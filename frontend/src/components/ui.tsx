@@ -15,19 +15,19 @@ import type { Role } from "../lib/types";
  */
 export const primaryButtonClass =
   "inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold " +
-  "text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-100 " +
-  "disabled:text-slate-400 disabled:shadow-none disabled:ring-1 disabled:ring-inset disabled:ring-slate-200";
+  "text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 " +
+  "disabled:text-slate-400 dark:disabled:text-slate-500 dark:disabled:text-slate-600 disabled:shadow-none disabled:ring-1 disabled:ring-inset disabled:ring-slate-200 dark:disabled:ring-slate-700";
 
 /** Shared secondary (outline) button styles with a matching disabled state. */
 export const secondaryButtonClass =
-  "inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 " +
-  "text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 " +
-  "disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 disabled:shadow-none";
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 " +
+  "text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-800/60 " +
+  "disabled:cursor-not-allowed disabled:border-slate-200 dark:disabled:border-slate-800 disabled:text-slate-300 dark:disabled:text-slate-600 disabled:shadow-none";
 
 export function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg
-      className={`animate-spin text-slate-400 ${className}`}
+      className={`animate-spin text-slate-400 dark:text-slate-500 ${className}`}
       viewBox="0 0 24 24"
       fill="none"
       aria-label="Loading"
@@ -45,7 +45,7 @@ export function Spinner({ className = "h-5 w-5" }: { className?: string }) {
 
 export function FullPageSpinner() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
       <Spinner className="h-8 w-8" />
     </div>
   );
@@ -63,7 +63,7 @@ export function PageLoader() {
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-400"
       role="alert"
     >
       <span>{message}</span>
@@ -71,7 +71,7 @@ export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: (
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-md bg-white px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200 transition hover:bg-red-100"
+          className="rounded-md bg-white dark:bg-slate-900 px-3 py-1 text-xs font-semibold text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30 transition hover:bg-red-100 dark:hover:bg-red-500/20"
         >
           Retry
         </button>
@@ -96,14 +96,14 @@ export function NoticeBanner({
 }) {
   return (
     <div
-      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+      className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
       role="status"
     >
       {message}
       {action && (
         <>
           {" "}
-          <Link to={action.to} className="font-semibold underline hover:text-amber-900">
+          <Link to={action.to} className="font-semibold underline hover:text-amber-900 dark:hover:text-amber-200">
             {action.label}
           </Link>
         </>
@@ -134,11 +134,11 @@ export function EmptyState({
       className="flex flex-col items-center px-6 py-12 text-center"
       data-testid={testid}
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
         {icon}
       </span>
-      <p className="mt-3 text-sm font-medium text-slate-700">{title}</p>
-      {hint && <p className="mt-1 max-w-md text-sm text-slate-500">{hint}</p>}
+      <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">{title}</p>
+      {hint && <p className="mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">{hint}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -171,8 +171,8 @@ export const emptyIconPaths = {
 export function RoleBadge({ role }: { role: Role | string }) {
   const styles =
     role === "OWNER"
-      ? "bg-indigo-50 text-indigo-700 ring-indigo-200"
-      : "bg-slate-100 text-slate-600 ring-slate-200";
+      ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-indigo-200 dark:ring-indigo-500/30"
+      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700";
 
   return (
     <span
@@ -226,8 +226,8 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
       onClick={(e) => void copy(e)}
       className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition ${
         copied
-          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-          : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"
+          ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/30 dark:ring-emerald-500/30"
+          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
       }`}
       aria-label={`Copy ${text}`}
     >
@@ -322,7 +322,7 @@ function OverlayCloseButton({ onClose }: { onClose: () => void }) {
       onClick={onClose}
       aria-label="Close"
       data-testid="overlay-close"
-      className="shrink-0 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+      className="shrink-0 rounded-md p-1.5 text-slate-400 dark:text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
     >
       <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
         <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -362,10 +362,10 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         data-testid={testid}
-        className={`relative z-10 flex max-h-[calc(100dvh-2rem)] w-full ${maxWidth} flex-col overflow-hidden rounded-2xl bg-white shadow-xl outline-none`}
+        className={`relative z-10 flex max-h-[calc(100dvh-2rem)] w-full ${maxWidth} flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-xl outline-none`}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-6">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 px-4 py-3 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h2>
           <OverlayCloseButton onClose={onClose} />
         </div>
         <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">{children}</div>
@@ -406,10 +406,10 @@ export function Drawer({
         aria-modal="true"
         aria-label={title}
         data-testid={testid}
-        className="relative z-10 flex h-full w-full flex-col bg-slate-50 shadow-xl outline-none sm:max-w-xl sm:border-l sm:border-slate-200"
+        className="relative z-10 flex h-full w-full flex-col bg-slate-50 dark:bg-slate-950 shadow-xl outline-none sm:max-w-xl sm:border-l sm:border-slate-200 sm:dark:border-slate-800"
       >
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h2>
           <OverlayCloseButton onClose={onClose} />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">{children}</div>
@@ -492,7 +492,7 @@ export function KebabMenu({
         aria-label={label}
         data-testid={testid}
         onClick={() => setOpen((v) => !v)}
-        className="rounded-md p-1.5 text-slate-400 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50 hover:text-slate-600"
+        className="rounded-md p-1.5 text-slate-400 dark:text-slate-500 ring-1 ring-inset ring-slate-200 dark:ring-slate-700 transition hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-600 dark:hover:text-slate-300"
       >
         <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path d="M10 3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm0 5.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm0 5.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z" />
@@ -504,7 +504,7 @@ export function KebabMenu({
           role="menu"
           aria-label={label}
           onKeyDown={onMenuKeyDown}
-          className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-1 shadow-lg"
         >
           {items.map((item, i) => (
             <button
@@ -523,7 +523,7 @@ export function KebabMenu({
                 buttonRef.current?.focus();
                 item.onSelect();
               }}
-              className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 transition hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none"
+              className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 dark:text-slate-200 transition hover:bg-indigo-50 dark:hover:bg-indigo-500/10 focus:bg-indigo-50 dark:focus:bg-indigo-500/10 focus:outline-none"
             >
               {item.label}
             </button>

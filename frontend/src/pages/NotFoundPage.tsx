@@ -10,13 +10,13 @@ export default function NotFoundPage() {
   usePageTitle("Page not found");
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 text-center">
       <Logo size="md" />
-      <p className="mt-6 text-sm font-semibold uppercase tracking-wide text-indigo-600">404</p>
-      <h1 className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl">
+      <p className="mt-6 text-sm font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">404</p>
+      <h1 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white sm:text-3xl">
         This page does not exist
       </h1>
-      <p className="mt-2 max-w-md text-sm text-slate-500">
+      <p className="mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
         The address may be mistyped, or the page may have moved. Short links themselves are
         served by the API host, not this dashboard.
       </p>

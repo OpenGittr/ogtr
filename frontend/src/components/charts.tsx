@@ -26,7 +26,7 @@ export function ColumnChart({ data }: { data: DayCount[] }) {
 
   if (data.length === 0) {
     return (
-      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-400">
+      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-400 dark:border-slate-800 dark:text-slate-500">
         No clicks in this period
       </div>
     );
@@ -43,11 +43,11 @@ export function ColumnChart({ data }: { data: DayCount[] }) {
           {gridLines.map((g) => (
             <div
               key={g}
-              className="absolute inset-x-0 border-t border-slate-100"
+              className="absolute inset-x-0 border-t border-slate-100 dark:border-slate-800"
               style={{ bottom: `${g * 100}%` }}
             />
           ))}
-          <div className="absolute inset-x-0 bottom-0 border-t border-slate-200" />
+          <div className="absolute inset-x-0 bottom-0 border-t border-slate-200 dark:border-slate-800" />
         </div>
 
         <div className="absolute inset-0 flex items-end gap-[2px]">
@@ -84,12 +84,12 @@ export function ColumnChart({ data }: { data: DayCount[] }) {
         </div>
 
         {/* Y max label */}
-        <span className="absolute right-0 top-0 -translate-y-1/2 rounded bg-white px-1 text-[10px] tabular-nums text-slate-400">
+        <span className="absolute right-0 top-0 -translate-y-1/2 rounded bg-white px-1 text-[10px] tabular-nums text-slate-400 dark:bg-slate-900 dark:text-slate-500">
           {max}
         </span>
       </div>
 
-      <div className="mt-1 flex justify-between text-[10px] text-slate-400">
+      <div className="mt-1 flex justify-between text-[10px] text-slate-400 dark:text-slate-500">
         <span>{shortDate(data[0].date)}</span>
         {data.length > 2 && <span>{shortDate(data[Math.floor(data.length / 2)].date)}</span>}
         {data.length > 1 && <span>{shortDate(data[data.length - 1].date)}</span>}
@@ -112,7 +112,7 @@ export function HBarList({
   emptyLabel?: string;
 }) {
   if (data.length === 0) {
-    return <p className="py-6 text-center text-sm text-slate-400">No data in this period</p>;
+    return <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">No data in this period</p>;
   }
 
   // Bars show share of total (not share of max) with a minimum visual weight,
@@ -120,23 +120,23 @@ export function HBarList({
   const total = data.reduce((sum, d) => sum + d.clicks, 0) || 1;
 
   return (
-    <ul className="divide-y divide-slate-100">
+    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
       {data.map((d) => (
         <li
           key={d.value || "empty"}
           className="flex items-center gap-3 py-2"
           title={`${d.value || emptyLabel}: ${d.clicks}`}
         >
-          <span className="w-24 shrink-0 truncate text-sm text-slate-700 sm:w-36">
+          <span className="w-24 shrink-0 truncate text-sm text-slate-700 sm:w-36 dark:text-slate-200">
             {d.value || emptyLabel}
           </span>
-          <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
             <div
               className="h-full rounded-full bg-indigo-500"
               style={{ width: `${Math.max((d.clicks / total) * 100, 4)}%` }}
             />
           </div>
-          <span className="w-10 shrink-0 text-right text-sm font-medium tabular-nums text-slate-900">
+          <span className="w-10 shrink-0 text-right text-sm font-medium tabular-nums text-slate-900 dark:text-white">
             {d.clicks}
           </span>
         </li>
@@ -158,14 +158,14 @@ export function StatTile({
   testid?: string;
 }) {
   return (
-    <div className="h-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
-      <p className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-400">
+    <div className="h-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <p className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
         {label}
       </p>
-      <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900" data-testid={testid}>
+      <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900 dark:text-white" data-testid={testid}>
         {value}
       </p>
-      {hint && <p className="mt-0.5 text-xs leading-4 text-slate-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs leading-4 text-slate-500 dark:text-slate-400">{hint}</p>}
     </div>
   );
 }

@@ -17,12 +17,12 @@ import { EmptyIcon, EmptyState, ErrorBanner, Spinner, primaryButtonClass } from 
 const DEVICE_OPTIONS = ["iOS", "Android", "Windows", "Other"];
 
 const inputClass =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm " +
-  "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
+  "w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm " +
+  "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30";
 
 const operatorClass =
-  "rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-700 shadow-sm " +
-  "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
+  "rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-sm text-slate-700 dark:text-slate-200 shadow-sm " +
+  "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30";
 
 // ---------------------------------------------------------------------------
 // Readable rule sentence: "If OS is Android and city is not Bengaluru → url"
@@ -112,14 +112,14 @@ function CityMultiSelect({
           {values.map((city) => (
             <span
               key={city}
-              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200"
+              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-500/30"
             >
               {city}
               <button
                 type="button"
                 onClick={() => remove(city)}
                 aria-label={`Remove ${city}`}
-                className="text-indigo-400 hover:text-indigo-700"
+                className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
               >
                 &times;
               </button>
@@ -150,7 +150,7 @@ function CityMultiSelect({
               type="button"
               onClick={() => add(query)}
               disabled={query.trim() === ""}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Add
             </button>
@@ -159,7 +159,7 @@ function CityMultiSelect({
 
         {open && suggestions.length > 0 && (
           <ul
-            className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-1 shadow-lg"
             data-testid="city-suggestions"
           >
             {suggestions.map((city) => (
@@ -167,7 +167,7 @@ function CityMultiSelect({
                 <button
                   type="button"
                   onClick={() => add(city)}
-                  className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-indigo-50"
+                  className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
                 >
                   {city}
                 </button>
@@ -178,7 +178,7 @@ function CityMultiSelect({
       </div>
 
       {freeText && (
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
           City autocomplete is not configured on this deployment — enter city names manually.
         </p>
       )}
@@ -301,11 +301,11 @@ function RuleBuilder({
   return (
     <form
       onSubmit={submit}
-      className="space-y-4 rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 sm:p-4"
+      className="space-y-4 rounded-lg border border-indigo-200 bg-indigo-50/40 dark:bg-indigo-500/10 p-3 sm:p-4"
       data-testid="rule-builder"
     >
       <div>
-        <label htmlFor="rule-name" className="mb-1 block text-xs font-medium text-slate-500">
+        <label htmlFor="rule-name" className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
           Rule name
         </label>
         <input
@@ -319,13 +319,13 @@ function RuleBuilder({
       </div>
 
       {/* Device condition */}
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
           <input
             type="checkbox"
             checked={form.deviceEnabled}
             onChange={(e) => set({ deviceEnabled: e.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
             data-testid="rule-device-toggle"
           />
           Device condition
@@ -333,7 +333,7 @@ function RuleBuilder({
 
         {form.deviceEnabled && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-slate-500">OS</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">OS</span>
             <select
               value={form.deviceOp}
               onChange={(e) => set({ deviceOp: e.target.value as RuleConditionType })}
@@ -352,7 +352,7 @@ function RuleBuilder({
                   className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition ${
                     form.deviceValues.includes(os)
                       ? "bg-indigo-600 text-white ring-indigo-600"
-                      : "bg-white text-slate-600 ring-slate-300 hover:bg-slate-50"
+                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                   }`}
                   aria-pressed={form.deviceValues.includes(os)}
                 >
@@ -365,13 +365,13 @@ function RuleBuilder({
       </div>
 
       {/* Location condition */}
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
           <input
             type="checkbox"
             checked={form.locationEnabled}
             onChange={(e) => set({ locationEnabled: e.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
             data-testid="rule-location-toggle"
           />
           Location condition
@@ -380,7 +380,7 @@ function RuleBuilder({
         {form.locationEnabled && (
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">City</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">City</span>
               <select
                 value={form.locationOp}
                 onChange={(e) => set({ locationOp: e.target.value as RuleConditionType })}
@@ -400,7 +400,7 @@ function RuleBuilder({
       </div>
 
       <div>
-        <label htmlFor="rule-url" className="mb-1 block text-xs font-medium text-slate-500">
+        <label htmlFor="rule-url" className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
           Redirect to
         </label>
         <input
@@ -414,7 +414,7 @@ function RuleBuilder({
       </div>
 
       {validation && (
-        <p className="text-sm text-red-600" role="alert" data-testid="rule-validation">
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert" data-testid="rule-validation">
           {validation}
         </p>
       )}
@@ -428,7 +428,7 @@ function RuleBuilder({
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
         >
           Cancel
         </button>
@@ -521,11 +521,11 @@ export default function TargetRulesSection({ link }: { link: ShortURL }) {
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Target rules</h3>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">Target rules</h3>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Route visitors by device or city. Rules run in order — the first match wins.
           </p>
         </div>
@@ -577,30 +577,30 @@ export default function TargetRulesSection({ link }: { link: ShortURL }) {
               {rules.map((rule, index) => (
                 <li
                   key={rule.id}
-                  className="rounded-lg border border-slate-200 p-3"
+                  className="rounded-lg border border-slate-200 dark:border-slate-800 p-3"
                   data-testid="rule-card"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400">
                           {index + 1}
                         </span>
-                        <span className="truncate text-sm font-semibold text-slate-800">
+                        <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                           {rule.target_name}
                         </span>
                       </div>
-                      <p className="mt-1 break-all text-sm text-slate-600">
+                      <p className="mt-1 break-all text-sm text-slate-600 dark:text-slate-300">
                         {ruleSentence(rule)}{" "}
-                        <span className="text-slate-400">&rarr;</span>{" "}
-                        <span className="text-indigo-600">{rule.url}</span>
+                        <span className="text-slate-400 dark:text-slate-500">&rarr;</span>{" "}
+                        <span className="text-indigo-600 dark:text-indigo-400">{rule.url}</span>
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <button
                         type="button"
                         onClick={() => startEdit(rule)}
-                        className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
+                        className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 ring-1 ring-inset ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                         data-testid="rule-edit"
                       >
                         Edit
@@ -608,7 +608,7 @@ export default function TargetRulesSection({ link }: { link: ShortURL }) {
                       <button
                         type="button"
                         onClick={() => void remove(rule)}
-                        className="rounded-md px-2 py-1 text-xs font-medium text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-50"
+                        className="rounded-md px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-200 dark:ring-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10"
                         data-testid="rule-delete"
                       >
                         Delete
@@ -633,7 +633,7 @@ export default function TargetRulesSection({ link }: { link: ShortURL }) {
           )}
 
           {actionError && (
-            <p className="mt-2 text-sm text-red-600" role="alert" data-testid="rule-error">
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert" data-testid="rule-error">
               {actionError}
             </p>
           )}

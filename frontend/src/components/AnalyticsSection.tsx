@@ -68,7 +68,7 @@ function fillDays(series: DayCount[], from: string, to: string): DayCount[] {
 /** Per-day breakdown rows for one dimension, newest day first. */
 function PerDayTable({ rows, emptyLabel }: { rows: DayDimCount[]; emptyLabel: string }) {
   if (rows.length === 0) {
-    return <p className="py-6 text-center text-sm text-slate-400">No data in this period</p>;
+    return <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">No data in this period</p>;
   }
 
   const sorted = [...rows].sort((a, b) => (a.date === b.date ? b.clicks - a.clicks : b.date.localeCompare(a.date)));
@@ -77,7 +77,7 @@ function PerDayTable({ rows, emptyLabel }: { rows: DayDimCount[]; emptyLabel: st
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+          <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <th className="py-2 pr-4">Day</th>
             <th className="py-2 pr-4">Value</th>
             <th className="py-2 text-right">Clicks</th>
@@ -85,10 +85,10 @@ function PerDayTable({ rows, emptyLabel }: { rows: DayDimCount[]; emptyLabel: st
         </thead>
         <tbody>
           {sorted.map((r) => (
-            <tr key={`${r.date}-${r.value}`} className="border-b border-slate-100 last:border-0">
-              <td className="py-1.5 pr-4 whitespace-nowrap text-slate-500">{shortDate(r.date)}</td>
-              <td className="py-1.5 pr-4 break-all text-slate-700">{r.value || emptyLabel}</td>
-              <td className="py-1.5 text-right tabular-nums font-medium text-slate-900">{r.clicks}</td>
+            <tr key={`${r.date}-${r.value}`} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <td className="py-1.5 pr-4 whitespace-nowrap text-slate-500 dark:text-slate-400">{shortDate(r.date)}</td>
+              <td className="py-1.5 pr-4 break-all text-slate-700 dark:text-slate-200">{r.value || emptyLabel}</td>
+              <td className="py-1.5 text-right tabular-nums font-medium text-slate-900 dark:text-white">{r.clicks}</td>
             </tr>
           ))}
         </tbody>
@@ -183,12 +183,12 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
   return (
     <div className="space-y-4" data-testid="analytics-section">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-slate-900">Analytics</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Analytics</h2>
 
         {/* Date-range filter: a single joined control attached to the header */}
         <form
           onSubmit={applyRange}
-          className="flex items-stretch overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm"
+          className="flex items-stretch overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm"
         >
           <label className="sr-only" htmlFor="stats-from">
             From
@@ -199,7 +199,7 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
             value={draftFrom}
             max={draftTo || undefined}
             onChange={(e) => setDraftFrom(e.target.value)}
-            className="w-[8.25rem] border-0 bg-transparent px-2 py-1.5 text-sm text-slate-700 focus:outline-none"
+            className="w-[8.25rem] border-0 bg-transparent px-2 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none"
             data-testid="stats-from"
           />
           <span className="flex items-center text-slate-300" aria-hidden="true">
@@ -214,12 +214,12 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
             value={draftTo}
             min={draftFrom || undefined}
             onChange={(e) => setDraftTo(e.target.value)}
-            className="w-[8.25rem] border-0 bg-transparent px-2 py-1.5 text-sm text-slate-700 focus:outline-none"
+            className="w-[8.25rem] border-0 bg-transparent px-2 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus:outline-none"
             data-testid="stats-to"
           />
           <button
             type="submit"
-            className="border-l border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50"
+            className="border-l border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 text-sm font-semibold text-indigo-600 dark:text-indigo-400 transition hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
             data-testid="stats-apply"
           >
             Apply
@@ -231,7 +231,7 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
       {limitNotice && <NoticeBanner message={limitNotice} action={limitNoticeAction} />}
 
       {loading ? (
-        <div className="flex justify-center rounded-xl border border-slate-200 bg-white py-16 shadow-sm">
+        <div className="flex justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-16 shadow-sm">
           <Spinner className="h-8 w-8" />
         </div>
       ) : (
@@ -264,13 +264,13 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
             </div>
 
             {/* Clicks per day */}
-            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
               <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <h3 className="text-base font-semibold text-slate-900">Clicks per day</h3>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Clicks per day</h3>
                 {report.clicks_per_day.length > 0 &&
                   report.clicks_per_day.length <= 3 &&
                   chartData.length > 7 && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                       Clicks on only {report.clicks_per_day.length} of {chartData.length} days in
                       this range
                     </p>
@@ -280,13 +280,13 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
             </section>
 
             {/* Breakdowns */}
-            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-base font-semibold text-slate-900">Breakdown</h3>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Breakdown</h3>
                 <button
                   type="button"
                   onClick={() => setPerDay((v) => !v)}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                  className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
                   data-testid="breakdown-toggle"
                 >
                   {perDay ? "Show totals" : "Show per day"}
@@ -304,7 +304,7 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
                     className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition ${
                       dimension === d.key
                         ? "bg-indigo-600 text-white ring-indigo-600"
-                        : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"
+                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                     }`}
                     data-testid={`breakdown-tab-${d.key}`}
                   >
@@ -330,8 +330,8 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
                       onClick={() => setLocationLevel(l.key)}
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset transition ${
                         locationLevel === l.key
-                          ? "bg-indigo-50 text-indigo-700 ring-indigo-200"
-                          : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50"
+                          ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-indigo-200 dark:ring-indigo-500/30 dark:ring-indigo-500/30"
+                          : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                       }`}
                       data-testid={`location-level-${l.key}`}
                     >
@@ -343,7 +343,7 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
 
               <div data-testid="breakdown-body">
                 {dimension === "location" && locationAllUnknown ? (
-                  <p className="py-6 text-center text-sm text-slate-400">
+                  <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
                     No location data &mdash; GeoIP not configured?
                   </p>
                 ) : perDay ? (
@@ -354,45 +354,45 @@ export default function AnalyticsSection({ link }: { link: ShortURL }) {
               </div>
 
               {dimension === "mobile_os" && (
-                <p className="mt-3 text-xs text-slate-400">Desktop clicks are not included.</p>
+                <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">Desktop clicks are not included.</p>
               )}
             </section>
 
             {/* Recent clicks */}
-            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-              <h3 className="mb-4 text-base font-semibold text-slate-900">
+            <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+              <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
                 Recent clicks
                 {report.clicks.length > RECENT_CLICKS_SHOWN && (
-                  <span className="ml-2 text-xs font-normal text-slate-400">
+                  <span className="ml-2 text-xs font-normal text-slate-400 dark:text-slate-500">
                     latest {RECENT_CLICKS_SHOWN} of {report.clicks.length}
                   </span>
                 )}
               </h3>
 
               {recentClicks.length === 0 ? (
-                <p className="py-4 text-center text-sm text-slate-400">No clicks in this period</p>
+                <p className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">No clicks in this period</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm" data-testid="recent-clicks-table">
                     <thead>
-                      <tr className="border-b border-slate-200 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
                         <th className="py-2 pr-4">Time</th>
                         <th className="py-2 text-right">Campaign tag</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recentClicks.map((c) => (
-                        <tr key={c.id} className="border-b border-slate-100 last:border-0">
-                          <td className="py-1.5 pr-4 whitespace-nowrap text-slate-700">
+                        <tr key={c.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                          <td className="py-1.5 pr-4 whitespace-nowrap text-slate-700 dark:text-slate-200">
                             {formatDateTime(c.ts)}
                           </td>
                           <td className="py-1.5 text-right">
                             {c.custom_tag_id ? (
-                              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">
+                              <span className="rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-500/30">
                                 {c.custom_tag_id}
                               </span>
                             ) : (
-                              <span className="text-slate-400">—</span>
+                              <span className="text-slate-400 dark:text-slate-500">—</span>
                             )}
                           </td>
                         </tr>
