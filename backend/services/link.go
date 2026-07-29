@@ -26,8 +26,10 @@ const (
 	qrImageSize  = 512
 )
 
-// aliasRe is the custom-alias format (FEATURES.md §1.2).
-var aliasRe = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,50}$`)
+// aliasRe is the custom-alias format (FEATURES.md §1.2). The 5-char minimum
+// keeps the scarce short codes (which share one global namespace with generated
+// codes) from being claimed, and stays clear of the short reserved words.
+var aliasRe = regexp.MustCompile(`^[a-zA-Z0-9_-]{5,50}$`)
 
 // ShortenInput is the POST /api/v1/links payload after binding.
 type ShortenInput struct {
@@ -813,11 +815,17 @@ func normalizeURL(raw string) (*url.URL, error) {
 // permissive one.
 func (s *LinkService) validateAlias(ctx *gofr.Context, orgID int64, alias string) error {
 	if !aliasRe.MatchString(alias) {
-		return apierrors.Unprocessable("alias must be 3-50 characters of letters, digits, '_' or '-'")
+		return apierrors.Unprocessable("alias must be 5-50 characters of letters, digits, '_' or '-'")
 	}
 
 	if strings.HasPrefix(alias, ".") {
 		return apierrors.Unprocessable("alias must not start with a dot")
+	}
+
+	// Custom aliases are user-chosen and live on the shared short domain, so a
+	// profane back-half would sit under the brand — reject explicit words.
+	if containsExplicit(alias) {
+		return apierrors.Unprocessable("this alias isn't allowed")
 	}
 
 	customScope, err := s.domains.HasVerified(ctx, orgID)

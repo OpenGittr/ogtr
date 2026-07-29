@@ -435,9 +435,11 @@ func TestLinkService_SetAlias(t *testing.T) {
 					Return(publicLink(9, "my-Brand_1", "https://x.co"), nil)
 			},
 		},
-		{desc: "too short", alias: "ab", wantStatus: http.StatusUnprocessableEntity},
+		{desc: "too short", alias: "abcd", wantStatus: http.StatusUnprocessableEntity},
 		{desc: "bad characters", alias: "no spaces!", wantStatus: http.StatusUnprocessableEntity},
-		{desc: "reserved word api", alias: "api", wantStatus: http.StatusUnprocessableEntity},
+		{desc: "explicit word blocked", alias: "fuck-this", wantStatus: http.StatusUnprocessableEntity},
+		{desc: "leetspeak explicit word blocked", alias: "sh1t-post", wantStatus: http.StatusUnprocessableEntity},
+		{desc: "reserved word static", alias: "static", wantStatus: http.StatusUnprocessableEntity},
 		{desc: "reserved word login (case-insensitive)", alias: "LOGIN", wantStatus: http.StatusUnprocessableEntity},
 		{desc: "reserved word metrics", alias: "metrics", wantStatus: http.StatusUnprocessableEntity},
 		{

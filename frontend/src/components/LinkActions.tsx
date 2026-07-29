@@ -179,14 +179,14 @@ export function QRPanel({ link, size = "lg" }: { link: ShortURL; size?: "sm" | "
 // friendly 409/422 messages.
 // ---------------------------------------------------------------------------
 
-// Mirrors the backend alias rules (services/link.go): 3-50 chars of
+// Mirrors the backend alias rules (services/link.go): 5-50 chars of
 // [a-zA-Z0-9_-], no reserved words, nothing starting with a dot.
-const ALIAS_RE = /^[a-zA-Z0-9_-]{3,50}$/;
+const ALIAS_RE = /^[a-zA-Z0-9_-]{5,50}$/;
 const RESERVED_ALIASES = ["api", "login", "metrics", "favicon.ico", "robots.txt", ".well-known"];
 
 function aliasValidationError(alias: string): string {
   if (!ALIAS_RE.test(alias)) {
-    return "Use 3-50 characters: letters, digits, '_' or '-'.";
+    return "Use 5-50 characters: letters, digits, '_' or '-'.";
   }
 
   if (alias.startsWith(".") || RESERVED_ALIASES.includes(alias.toLowerCase())) {

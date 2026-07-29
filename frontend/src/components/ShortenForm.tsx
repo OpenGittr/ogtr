@@ -312,7 +312,7 @@ export default function ShortenForm({
             Custom back-half
           </label>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Pick your own short link instead of a random code. 3–50 letters, digits, “-” or “_”.
+            Pick your own short link instead of a random code. 5–50 letters, digits, “-” or “_”.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <span className="shrink-0 font-mono text-xs text-slate-400 dark:text-slate-500">/</span>
@@ -469,27 +469,6 @@ export default function ShortenForm({
               <input id="shorten-expires" type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className={`mt-1 ${inputClass}`} />
             </div>
           </div>
-        </div>
-      )}
-
-      {!created && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
-          <span className="mr-1 font-medium text-slate-600 dark:text-slate-300">Every link also gets</span>
-          {[
-            { icon: icons.qr, label: "QR code" },
-            { icon: icons.phone, label: "Deep links" },
-            { icon: icons.target, label: "Targeting" },
-            { icon: icons.chart, label: "Analytics" },
-          ].map((f) => (
-            <span
-              key={f.label}
-              className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 font-medium text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
-            >
-              <Icon path={f.icon} className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
-              {f.label}
-            </span>
-          ))}
-          <span className="text-slate-400 dark:text-slate-500">— set them up above, or on the link later</span>
         </div>
       )}
 

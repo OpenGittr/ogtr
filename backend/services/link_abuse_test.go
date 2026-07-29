@@ -166,7 +166,7 @@ func TestLinkService_SetAlias_ReservedScopeSplit(t *testing.T) {
 			wantStatus: http.StatusUnprocessableEntity},
 		{desc: "brand word allowed for custom-domain org", alias: "pricing", hasVerified: true},
 		{desc: "auth word allowed for custom-domain org", alias: "login", hasVerified: true},
-		{desc: "functional word reserved even for custom-domain org", alias: "api",
+		{desc: "functional word reserved even for custom-domain org", alias: "static",
 			hasVerified: true, wantStatus: http.StatusUnprocessableEntity},
 		{desc: "functional word reserved on shared domain", alias: "metrics",
 			wantStatus: http.StatusUnprocessableEntity},
