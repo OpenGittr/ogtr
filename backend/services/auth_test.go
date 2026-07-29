@@ -57,7 +57,7 @@ func newAuthServiceWithPolicy(t *testing.T, policy limits.Policy) (*AuthService,
 		auth.ProviderDev:    auth.NewDevProvider(),
 	}
 
-	return NewAuthService(providers, m.tokens, m.users, m.orgs, m.members, m.invites, policy), m, ctx
+	return NewAuthService(providers, m.tokens, m.users, m.orgs, m.members, m.invites, policy, nil), m, ctx
 }
 
 func pairFor(userID, orgID int64) models.TokenPair {

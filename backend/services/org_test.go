@@ -44,7 +44,7 @@ func newOrgServiceWithPolicy(t *testing.T, policy limits.Policy) (*OrgService, o
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-	return NewOrgService(m.orgs, m.members, m.invites, m.users, policy), m, ctx
+	return NewOrgService(m.orgs, m.members, m.invites, m.users, policy, nil), m, ctx
 }
 
 // denyCreateOrgPolicy blocks org creation; embedding UnimplementedPolicy is

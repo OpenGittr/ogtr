@@ -7,6 +7,7 @@ import (
 	"gofr.dev/pkg/gofr"
 
 	"github.com/opengittr/ogtr/backend/apierrors"
+	"github.com/opengittr/ogtr/backend/email"
 	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
@@ -27,12 +28,14 @@ type OrgService struct {
 	invites InviteStore
 	users   UserStore
 	policy  limits.Policy
+	mailer  *email.Sender
 }
 
 // NewOrgService wires an OrgService. policy bounds org creation; wire
 // limits.Unlimited{} unless the deployment supplies its own.
-func NewOrgService(orgs OrgStore, members MemberStore, invites InviteStore, users UserStore, policy limits.Policy) *OrgService {
-	return &OrgService{orgs: orgs, members: members, invites: invites, users: users, policy: policy}
+func NewOrgService(orgs OrgStore, members MemberStore, invites InviteStore, users UserStore,
+	policy limits.Policy, mailer *email.Sender) *OrgService {
+	return &OrgService{orgs: orgs, members: members, invites: invites, users: users, policy: policy, mailer: mailer}
 }
 
 // Create makes a new org with a unique slug derived from its name; the
@@ -204,7 +207,29 @@ func (s *OrgService) CreateInvite(ctx *gofr.Context, orgID, actorID int64, email
 		return nil, apierrors.Conflict("a pending invite for this email already exists")
 	}
 
-	return s.invites.Create(ctx, orgID, email, actorID)
+	invite, err := s.invites.Create(ctx, orgID, email, actorID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send the branded invite email (best-effort, async). Only when mail is
+	// configured do we look up the org/inviter names for the copy — a lookup
+	// failure just falls back to generic wording, it never fails the invite.
+	if s.mailer.Enabled() {
+		orgName := ""
+		if org, oErr := s.orgs.GetByID(ctx, orgID); oErr == nil && org != nil {
+			orgName = org.Name
+		}
+
+		inviterName := ""
+		if inviter, uErr := s.users.GetByID(ctx, actorID); uErr == nil && inviter != nil {
+			inviterName = inviter.Name
+		}
+
+		s.mailer.SendInvite(email, orgName, inviterName)
+	}
+
+	return invite, nil
 }
 
 // ListInvites lists the org's pending invites.

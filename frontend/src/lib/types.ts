@@ -343,4 +343,11 @@ export interface ShortenInput {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  /** Optional custom back-half chosen at creation; blank = auto-generated. */
+  alias?: string;
+  /** Optional per-link config applied atomically at creation. */
+  deeplink_config?: DeeplinkConfig;
+  rules?: RuleInput[];
+  activates_at?: string | null;
+  expires_at?: string | null;
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/opengittr/ogtr/backend/apierrors"
 	"github.com/opengittr/ogtr/backend/auth"
+	"github.com/opengittr/ogtr/backend/email"
 	"github.com/opengittr/ogtr/backend/limits"
 	"github.com/opengittr/ogtr/backend/models"
 )
@@ -38,6 +39,7 @@ type AuthService struct {
 	members   MemberStore
 	invites   InviteStore
 	policy    limits.Policy
+	mailer    *email.Sender
 }
 
 // NewAuthService wires an AuthService. providers maps enabled provider names
@@ -49,10 +51,10 @@ type AuthService struct {
 // limits.Unlimited{} unless the deployment supplies its own.
 func NewAuthService(providers map[string]auth.IdentityProvider, tokens TokenIssuer,
 	users UserStore, orgs OrgStore, members MemberStore, invites InviteStore,
-	policy limits.Policy) *AuthService {
+	policy limits.Policy, mailer *email.Sender) *AuthService {
 	return &AuthService{
 		providers: providers, tokens: tokens, users: users,
-		orgs: orgs, members: members, invites: invites, policy: policy,
+		orgs: orgs, members: members, invites: invites, policy: policy, mailer: mailer,
 	}
 }
 
@@ -97,6 +99,9 @@ func (s *AuthService) Login(ctx *gofr.Context, provider, credential string) (*Au
 		}
 
 		ctx.Logger.Infof("JIT-created user %d for %s", user.ID, email)
+
+		// Welcome the new user (best-effort, async; no-op if mail unconfigured).
+		s.mailer.SendWelcome(user.Email, user.Name)
 	}
 
 	s.touchLastActive(ctx, user.ID)

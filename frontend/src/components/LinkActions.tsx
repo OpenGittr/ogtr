@@ -21,7 +21,7 @@ import {
 } from "./ui";
 
 /** One of the on-demand management surfaces. */
-export type LinkAction = "qr" | "alias" | "edit" | "schedule" | "targeting";
+export type LinkAction = "qr" | "alias" | "edit" | "schedule" | "deeplinks" | "targeting";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm " +
@@ -52,7 +52,8 @@ export function linkMenuItems(
     { label: "Change alias", onSelect: () => onAction("alias"), testid: "menu-alias" },
     { label: "Edit destination", onSelect: () => onAction("edit"), testid: "menu-edit" },
     { label: "Set schedule", onSelect: () => onAction("schedule"), testid: "menu-schedule" },
-    { label: "Manage targeting", onSelect: () => onAction("targeting"), testid: "menu-targeting" },
+    { label: "Mobile deep links", onSelect: () => onAction("deeplinks"), testid: "menu-deeplinks" },
+    { label: "Device & location targeting", onSelect: () => onAction("targeting"), testid: "menu-targeting" },
   ];
 
   if (onViewAnalytics) {
@@ -623,12 +624,17 @@ export function LinkActionOverlays({
     );
   }
 
+  if (action === "deeplinks") {
+    return (
+      <Drawer title={`Mobile deep links — /${link.code}`} onClose={onClose} testid="deeplinks-drawer">
+        <DeeplinkSection link={link} onUpdated={onUpdated} />
+      </Drawer>
+    );
+  }
+
   return (
     <Drawer title={`Targeting — /${link.code}`} onClose={onClose} testid="targeting-drawer">
-      <div className="space-y-4">
-        <DeeplinkSection link={link} onUpdated={onUpdated} />
-        <TargetRulesSection link={link} />
-      </div>
+      <TargetRulesSection link={link} />
     </Drawer>
   );
 }

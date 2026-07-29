@@ -34,7 +34,7 @@ func newScannedLinkService(t *testing.T, abuseContact string) (
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-	svc := NewLinkService(links, members, domains, urlScanner, limits.Unlimited{}, nil, "http", "sho.rt", abuseContact)
+	svc := NewLinkService(links, NewMockRuleStore(ctrl), members, domains, urlScanner, limits.Unlimited{}, nil, "http", "sho.rt", abuseContact)
 
 	return svc, links, urlScanner, ctx
 }
@@ -181,7 +181,7 @@ func TestLinkService_SetAlias_ReservedScopeSplit(t *testing.T) {
 			mockContainer, _ := container.NewMockContainer(t)
 			ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-			svc := NewLinkService(links, NewMockMemberStore(ctrl), domains, nil, limits.Unlimited{}, nil, "http", "sho.rt", "")
+			svc := NewLinkService(links, NewMockRuleStore(ctrl), NewMockMemberStore(ctrl), domains, nil, limits.Unlimited{}, nil, "http", "sho.rt", "")
 
 			domains.EXPECT().HasVerified(gomock.Any(), int64(3)).Return(tc.hasVerified, nil)
 
@@ -217,7 +217,7 @@ func TestLinkService_SetAlias_ConfiguredReservedWord(t *testing.T) {
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-	svc := NewLinkService(links, NewMockMemberStore(ctrl), domains, nil, limits.Unlimited{},
+	svc := NewLinkService(links, NewMockRuleStore(ctrl), NewMockMemberStore(ctrl), domains, nil, limits.Unlimited{},
 		NewReservedAliases([]string{"campaign-x"}), "http", "sho.rt", "")
 
 	// RESERVED_ALIASES additions bind in both scopes.
@@ -239,7 +239,7 @@ func TestLinkService_SetAlias_DomainLookupFailureFallsBackStrict(t *testing.T) {
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-	svc := NewLinkService(links, NewMockMemberStore(ctrl), domains, nil, limits.Unlimited{}, nil, "http", "sho.rt", "")
+	svc := NewLinkService(links, NewMockRuleStore(ctrl), NewMockMemberStore(ctrl), domains, nil, limits.Unlimited{}, nil, "http", "sho.rt", "")
 
 	domains.EXPECT().HasVerified(gomock.Any(), int64(3)).Return(false, assert.AnError)
 

@@ -20,6 +20,7 @@ import (
 	"gofr.dev/pkg/gofr/migration"
 
 	"github.com/opengittr/ogtr/backend/auth"
+	"github.com/opengittr/ogtr/backend/email"
 	"github.com/opengittr/ogtr/backend/geo"
 	"github.com/opengittr/ogtr/backend/handlers"
 	"github.com/opengittr/ogtr/backend/migrations"
@@ -122,9 +123,17 @@ func setup(app *gofr.App, o *options) error {
 	// INV-7).
 	policy := o.policy
 
-	authSvc := services.NewAuthService(providers, tokens, userStore, orgStore, memberStore, inviteStore, policy)
-	orgSvc := services.NewOrgService(orgStore, memberStore, inviteStore, userStore, policy)
-	linkSvc := services.NewLinkService(linkStore, memberStore, domainStore, urlScanner, policy, reserved,
+	// Transactional email (welcome, invites). Config-gated: with no SMTP set it
+	// is a no-op, so dev and self-host without mail are unaffected. APP_URL is
+	// the dashboard base for call-to-action links.
+	mailer := email.New(
+		app.Config.Get("SMTP_HOST"), app.Config.Get("SMTP_PORT"),
+		app.Config.Get("SMTP_USERNAME"), app.Config.Get("SMTP_PASSWORD"),
+		app.Config.Get("MAIL_FROM"), app.Config.Get("APP_URL"))
+
+	authSvc := services.NewAuthService(providers, tokens, userStore, orgStore, memberStore, inviteStore, policy, mailer)
+	orgSvc := services.NewOrgService(orgStore, memberStore, inviteStore, userStore, policy, mailer)
+	linkSvc := services.NewLinkService(linkStore, ruleStore, memberStore, domainStore, urlScanner, policy, reserved,
 		shortScheme, shortDomain, abuseContact)
 	ruleSvc := services.NewRuleService(ruleStore, linkStore)
 	resolveSvc := services.NewResolveService(linkStore, clickStore, ruleStore, domainStore, locator,

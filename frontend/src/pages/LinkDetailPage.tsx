@@ -182,9 +182,11 @@ export default function LinkDetailPage() {
           <button type="button" onClick={() => setAction("schedule")} className={actionButton(Boolean(link.activates_at || link.expires_at))} data-testid="action-schedule">
             {link.activates_at || link.expires_at ? "Scheduled" : "Schedule"}
           </button>
-          <button type="button" onClick={() => setAction("targeting")} className={actionButton(hasDeeplinks || ruleCount > 0)} data-testid="action-targeting">
+          <button type="button" onClick={() => setAction("deeplinks")} className={actionButton(hasDeeplinks)} data-testid="action-deeplinks">
+            Deep links
+          </button>
+          <button type="button" onClick={() => setAction("targeting")} className={actionButton(ruleCount > 0)} data-testid="action-targeting">
             Targeting{ruleCount > 0 ? ` · ${ruleCount} ${ruleCount === 1 ? "rule" : "rules"}` : ""}
-            {hasDeeplinks && ruleCount === 0 ? " · deep links" : ""}
           </button>
         </div>
 

@@ -36,6 +36,19 @@ type ShortenInput struct {
 	UTMSource   string `json:"utm_source"`
 	UTMMedium   string `json:"utm_medium"`
 	UTMCampaign string `json:"utm_campaign"`
+	// Alias is an optional custom back-half chosen at creation. Blank means an
+	// auto-generated code. A provided alias is validated and must be unique
+	// (409 if taken), and it disables destination-dedupe — the caller wants
+	// this specific short link, not an existing one for the same URL.
+	Alias string `json:"alias"`
+	// The remaining fields let a caller configure the whole link in one create
+	// call (FEATURES.md §1.1). All optional and validated up front, so a bad
+	// value fails before anything is written. Deep link + schedule are stored
+	// on the link row itself (one INSERT); rules are appended after.
+	Deeplink    *models.DeeplinkConfig `json:"deeplink_config"`
+	Rules       []RuleInput            `json:"rules"`
+	ActivatesAt *string                `json:"activates_at"`
+	ExpiresAt   *string                `json:"expires_at"`
 }
 
 // LinkPage is one page of the org's links.
@@ -53,6 +66,7 @@ type LinkPage struct {
 // §1.6).
 type LinkService struct {
 	links        LinkStore
+	rules        RuleStore
 	members      MemberStore
 	domains      DomainStore
 	scanner      URLScanner
@@ -71,7 +85,7 @@ type LinkService struct {
 // reserved is the alias blacklist (nil means the built-in categories only);
 // abuseContact (ABUSE_CONTACT config, may be empty) is appended to
 // flagged-destination errors so a false positive has an escalation path.
-func NewLinkService(links LinkStore, members MemberStore, domains DomainStore,
+func NewLinkService(links LinkStore, rules RuleStore, members MemberStore, domains DomainStore,
 	urlScanner URLScanner, policy limits.Policy, reserved *ReservedAliases,
 	shortScheme, shortDomain, abuseContact string) *LinkService {
 	if reserved == nil {
@@ -79,7 +93,7 @@ func NewLinkService(links LinkStore, members MemberStore, domains DomainStore,
 	}
 
 	return &LinkService{
-		links: links, members: members, domains: domains,
+		links: links, rules: rules, members: members, domains: domains,
 		scanner: urlScanner, policy: policy, reserved: reserved,
 		shortScheme: shortScheme, shortDomain: shortDomain, abuseContact: abuseContact,
 	}
@@ -182,15 +196,54 @@ func (s *LinkService) shorten(ctx *gofr.Context, orgID int64, userID, apiKeyID *
 
 	destination := appendUTMs(dest.String(), utms)
 
-	if existing, err := s.links.FindByDestination(ctx, orgID, viewerID, destination); err != nil {
-		return nil, err
-	} else if existing != nil {
-		return s.withShortURL(existing, s.displayBase(ctx, orgID)), nil
-	}
-
-	code, err := s.uniqueCode(ctx)
+	// Validate the optional inline config up front (create-with-config is
+	// validate-first, not transactional): a malformed deep link, rule or
+	// schedule fails here, before any row is written.
+	activatesAt, expiresAt, err := parseCreateSchedule(in.ActivatesAt, in.ExpiresAt)
 	if err != nil {
 		return nil, err
+	}
+
+	pendingRules, err := normalizeRuleInputs(in.Rules)
+	if err != nil {
+		return nil, err
+	}
+
+	var deeplink *models.DeeplinkConfig
+	if in.Deeplink != nil && !in.Deeplink.Empty() {
+		deeplink = in.Deeplink
+	}
+
+	var code string
+
+	if alias := strings.TrimSpace(in.Alias); alias != "" {
+		// A caller-chosen alias: validate + claim it, and skip dedupe (they
+		// want this specific short link, not an existing one for the same URL).
+		if err := s.validateAlias(ctx, orgID, alias); err != nil {
+			return nil, err
+		}
+
+		taken, err := s.links.CodeExists(ctx, alias)
+		if err != nil {
+			return nil, err
+		}
+
+		if taken {
+			return nil, apierrors.Conflict("this alias is already in use")
+		}
+
+		code = alias
+	} else {
+		if existing, err := s.links.FindByDestination(ctx, orgID, viewerID, destination); err != nil {
+			return nil, err
+		} else if existing != nil {
+			return s.withShortURL(existing, s.displayBase(ctx, orgID)), nil
+		}
+
+		code, err = s.uniqueCode(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	link, err := s.links.Create(ctx, &models.Link{
@@ -203,9 +256,27 @@ func (s *LinkService) shorten(ctx *gofr.Context, orgID int64, userID, apiKeyID *
 		UTMSource:      nilIfEmpty(utms.source),
 		UTMMedium:      nilIfEmpty(utms.medium),
 		UTMCampaign:    nilIfEmpty(utms.campaign),
+		Deeplink:       deeplink,
+		ActivatesAt:    activatesAt,
+		ExpiresAt:      expiresAt,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Attach the (already-validated) target rules to the new link, in order.
+	// Deep link and schedule rode on the link's own INSERT above; rules are
+	// separate rows, so a rare write error here surfaces as a failure — the
+	// link already exists and the caller can add the rest from its detail page.
+	for i := range pendingRules {
+		pendingRules[i].OrgID, pendingRules[i].LinkID = orgID, link.ID
+
+		if _, err := s.rules.Create(ctx, &pendingRules[i]); err != nil {
+			ctx.Logger.Errorf("attaching rule %d/%d to new link %d failed: %v",
+				i+1, len(pendingRules), link.ID, err)
+
+			return nil, err
+		}
 	}
 
 	if userID != nil {
@@ -215,6 +286,64 @@ func (s *LinkService) shorten(ctx *gofr.Context, orgID int64, userID, apiKeyID *
 	}
 
 	return s.withShortURL(link, s.displayBase(ctx, orgID)), nil
+}
+
+// parseCreateSchedule parses the optional RFC3339 activation/expiry bounds of a
+// create request and enforces activation-before-expiry. Either may be nil.
+func parseCreateSchedule(activatesRaw, expiresRaw *string) (*time.Time, *time.Time, error) {
+	activatesAt, err := parseOptionalRFC3339(activatesRaw)
+	if err != nil {
+		return nil, nil, apierrors.Unprocessable("activates_at must be an RFC3339 timestamp")
+	}
+
+	expiresAt, err := parseOptionalRFC3339(expiresRaw)
+	if err != nil {
+		return nil, nil, apierrors.Unprocessable("expires_at must be an RFC3339 timestamp")
+	}
+
+	if activatesAt != nil && expiresAt != nil && !activatesAt.Before(*expiresAt) {
+		return nil, nil, apierrors.Unprocessable("activation time must be before expiry time")
+	}
+
+	return activatesAt, expiresAt, nil
+}
+
+func parseOptionalRFC3339(s *string) (*time.Time, error) {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return nil, nil
+	}
+
+	return timeParseRFC3339(strings.TrimSpace(*s))
+}
+
+func timeParseRFC3339(s string) (*time.Time, error) {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
+}
+
+// normalizeRuleInputs validates + normalizes create-time rule inputs with the
+// same normalizer as the post-create rule API; nil input yields no rules.
+func normalizeRuleInputs(inputs []RuleInput) ([]models.Rule, error) {
+	if len(inputs) == 0 {
+		return nil, nil
+	}
+
+	rules := make([]models.Rule, 0, len(inputs))
+
+	for _, in := range inputs {
+		rule, err := normalizeRule(in)
+		if err != nil {
+			return nil, err
+		}
+
+		rules = append(rules, *rule)
+	}
+
+	return rules, nil
 }
 
 // existingShortURL handles already-short detection (FEATURES.md §1.1): the

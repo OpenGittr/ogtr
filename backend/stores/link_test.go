@@ -56,7 +56,7 @@ func TestLinkStore_Create(t *testing.T) {
 			desc: "created",
 			mock: func(m sqlmock.Sqlmock) {
 				m.ExpectExec(insertLink).
-					WithArgs(int64(3), int64(7), nil, "abc1234", "https://x.co", "PUBLIC", nil, nil, nil).
+					WithArgs(int64(3), int64(7), nil, "abc1234", "https://x.co", "PUBLIC", nil, nil, nil, nil, nil, nil).
 					WillReturnResult(sqlmock.NewResult(9, 1))
 				m.ExpectQuery(selectLinkByID).WithArgs(int64(9), int64(3)).
 					WillReturnRows(linkRows(9, "abc1234", "https://x.co"))
@@ -66,7 +66,7 @@ func TestLinkStore_Create(t *testing.T) {
 			desc: "insert fails",
 			mock: func(m sqlmock.Sqlmock) {
 				m.ExpectExec(insertLink).
-					WithArgs(int64(3), int64(7), nil, "abc1234", "https://x.co", "PUBLIC", nil, nil, nil).
+					WithArgs(int64(3), int64(7), nil, "abc1234", "https://x.co", "PUBLIC", nil, nil, nil, nil, nil, nil).
 					WillReturnError(errDB)
 			},
 			wantErr: true,

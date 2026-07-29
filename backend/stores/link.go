@@ -28,13 +28,26 @@ const linkColumns = "id, org_id, user_id, api_key_id, code, destination_url, typ
 const visibleFilter = "org_id = ? AND (type = 'PUBLIC' OR user_id = ?)"
 
 const insertLink = "INSERT INTO links (org_id, user_id, api_key_id, code, destination_url, type, " +
-	"utm_source, utm_medium, utm_campaign) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	"utm_source, utm_medium, utm_campaign, deeplink_config, activates_at, expires_at) " +
+	"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
-// Create inserts a link and returns the stored row.
+// Create inserts a link and returns the stored row. Deep link and schedule
+// ride on this INSERT (create-with-config), so a link and its deep-link/window
+// are one atomic row; target rules are separate rows written by the caller.
 func (s *LinkStore) Create(ctx *gofr.Context, l *models.Link) (*models.Link, error) {
+	var deeplink any
+	if l.Deeplink != nil && !l.Deeplink.Empty() {
+		raw, err := json.Marshal(l.Deeplink)
+		if err != nil {
+			return nil, err
+		}
+
+		deeplink = string(raw) // string, not []byte — see UpdateDeeplink.
+	}
+
 	res, err := ctx.SQL.ExecContext(ctx, insertLink,
 		l.OrgID, l.UserID, l.APIKeyID, l.Code, l.DestinationURL, l.Type,
-		l.UTMSource, l.UTMMedium, l.UTMCampaign)
+		l.UTMSource, l.UTMMedium, l.UTMCampaign, deeplink, l.ActivatesAt, l.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}

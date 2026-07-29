@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,7 +62,7 @@ func newLinkServiceWithPolicy(t *testing.T, policy limits.Policy) (*LinkService,
 
 	// nil scanner = allow every destination; scanning behavior has its own
 	// tests with a mock URLScanner.
-	return NewLinkService(links, members, domains, nil, policy, nil, "http", "sho.rt", ""), links, members, domains, ctx
+	return NewLinkService(links, NewMockRuleStore(ctrl), members, domains, nil, policy, nil, "http", "sho.rt", ""), links, members, domains, ctx
 }
 
 func publicLink(id int64, code, dest string) *models.Link {
@@ -150,6 +151,70 @@ func TestLinkService_Shorten_StoresAsCreatedUTMs(t *testing.T) {
 
 	_, err := svc.Shorten(ctx, 3, 7, ShortenInput{URL: "https://example.com", UTMSource: "tw", UTMMedium: "social"})
 	require.NoError(t, err)
+}
+
+func TestLinkService_Shorten_WithInlineSchedule(t *testing.T) {
+	t.Run("schedule rides on the create INSERT", func(t *testing.T) {
+		svc, links, ctx := newLinkService(t)
+		links.EXPECT().FindByDestination(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
+		links.EXPECT().CodeExists(gomock.Any(), gomock.Any()).Return(false, nil)
+		links.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ *gofr.Context, l *models.Link) (*models.Link, error) {
+				require.NotNil(t, l.ExpiresAt, "expiry should ride on the create model")
+				l.ID = 1
+
+				return l, nil
+			})
+
+		expires := time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
+		link, err := svc.Shorten(ctx, 3, 7, ShortenInput{URL: "https://example.com", ExpiresAt: &expires})
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), link.ID)
+	})
+
+	t.Run("activation after expiry is rejected before any write", func(t *testing.T) {
+		svc, _, ctx := newLinkService(t)
+		// No Create/FindByDestination expectations: validation fails up front.
+		future := time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
+		past := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+
+		_, err := svc.Shorten(ctx, 3, 7,
+			ShortenInput{URL: "https://example.com", ActivatesAt: &future, ExpiresAt: &past})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "before expiry")
+	})
+}
+
+func TestLinkService_Shorten_CustomAlias(t *testing.T) {
+	t.Run("uses the alias as the code and skips destination dedupe", func(t *testing.T) {
+		svc, links, ctx := newLinkService(t)
+		// No FindByDestination expectation: a provided alias must skip dedupe
+		// (gomock fails the test if it is called). The alias is claimed and used.
+		links.EXPECT().CodeExists(gomock.Any(), "spring-sale").Return(false, nil)
+		links.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ *gofr.Context, l *models.Link) (*models.Link, error) {
+				l.ID = 1
+
+				return l, nil
+			})
+
+		link, err := svc.Shorten(ctx, 3, 7, ShortenInput{URL: "https://example.com", Alias: "spring-sale"})
+
+		require.NoError(t, err)
+		assert.Equal(t, "spring-sale", link.Code)
+	})
+
+	t.Run("a taken alias is rejected", func(t *testing.T) {
+		svc, links, ctx := newLinkService(t)
+		links.EXPECT().CodeExists(gomock.Any(), "taken").Return(true, nil)
+
+		_, err := svc.Shorten(ctx, 3, 7, ShortenInput{URL: "https://example.com", Alias: "taken"})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "already in use")
+	})
 }
 
 func TestLinkService_Shorten_DedupesPerOrg(t *testing.T) {
