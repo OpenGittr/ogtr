@@ -10,6 +10,7 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 import AnalyticsSection from "../components/AnalyticsSection";
 import {
   LinkActionOverlays,
+  QRPanel,
   linkMenuItems,
   looksLikeAlias,
   type LinkAction,
@@ -115,8 +116,10 @@ export default function LinkDetailPage() {
         &larr; All links
       </RouterLink>
 
+      {/* Top: link header + an always-visible QR card (stacks on mobile). */}
+      <div className="grid gap-6 lg:grid-cols-3">
       {/* Page header: short URL + destination + status/meta chips + actions */}
-      <header className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+      <header className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6 lg:col-span-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
@@ -163,7 +166,7 @@ export default function LinkDetailPage() {
           {/* Same actions as the list menu (minus "View analytics" — this is it) */}
           <KebabMenu
             testid="detail-menu"
-            items={linkMenuItems(link, setAction)}
+            items={linkMenuItems(link, setAction).filter((i) => i.testid !== "menu-qr")}
           />
         </div>
 
@@ -242,6 +245,16 @@ export default function LinkDetailPage() {
           ))}
         </div>
       </header>
+
+      <aside className="flex flex-col rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          QR code
+        </h2>
+        <div className="flex flex-1 items-center justify-center">
+          <QRPanel link={link} />
+        </div>
+      </aside>
+      </div>
 
       {/* Analytics: the full content width (management moved to overlays) */}
       <AnalyticsSection link={link} />
