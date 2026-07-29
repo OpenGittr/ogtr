@@ -71,6 +71,22 @@ func (h *ResolveHandler) Redirect(ctx *gofr.Context) (any, error) {
 		return h.disabledPage(), err
 	}
 
+	var scheduled *services.ScheduledLinkError
+	if errors.As(err, &scheduled) {
+		return response.File{
+			Content:     renderPage(scheduledTmpl, pageData{Title: "This link isn't active yet"}),
+			ContentType: htmlContentType,
+		}, err
+	}
+
+	var expired *services.ExpiredLinkError
+	if errors.As(err, &expired) {
+		return response.File{
+			Content:     renderPage(expiredTmpl, pageData{Title: "This link has expired"}),
+			ContentType: htmlContentType,
+		}, err
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -233,6 +233,56 @@ func TestResolveService_StoreError(t *testing.T) {
 	require.Error(t, err)
 }
 
+// --- Scheduled activation / expiry window ----------------------------------
+
+func TestResolveService_ScheduleWindow(t *testing.T) {
+	future := time.Now().Add(time.Hour)
+	past := time.Now().Add(-time.Hour)
+
+	t.Run("before activation is a 404 with no click recorded", func(t *testing.T) {
+		svc, m, ctx := newResolveService(t)
+		link := publicLink(9, "abc1234", "https://example.com")
+		link.ActivatesAt = &future
+		// No RecordVisit/Insert expectations: an out-of-window link records nothing.
+		m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(link, nil)
+
+		_, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+
+		var scheduled *ScheduledLinkError
+		require.ErrorAs(t, err, &scheduled)
+		assert.Equal(t, http.StatusNotFound, scheduled.StatusCode())
+	})
+
+	t.Run("after expiry is a 410 with no click recorded", func(t *testing.T) {
+		svc, m, ctx := newResolveService(t)
+		link := publicLink(9, "abc1234", "https://example.com")
+		link.ExpiresAt = &past
+		m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(link, nil)
+
+		_, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+
+		var expired *ExpiredLinkError
+		require.ErrorAs(t, err, &expired)
+		assert.Equal(t, http.StatusGone, expired.StatusCode())
+	})
+
+	t.Run("inside the window resolves and records normally", func(t *testing.T) {
+		svc, m, ctx := newResolveService(t)
+		stubNoTargeting(m)
+		link := publicLink(9, "abc1234", "https://example.com")
+		link.ActivatesAt = &past
+		link.ExpiresAt = &future
+		m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(link, nil)
+		m.links.EXPECT().RecordVisit(gomock.Any(), int64(9)).Return(nil)
+		m.clicks.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(nil)
+
+		res, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+
+		require.NoError(t, err)
+		assert.Contains(t, res.URL, "https://example.com")
+	})
+}
+
 // --- Deep links (FEATURES.md §3.2) -----------------------------------------
 
 func TestResolveService_Deeplink(t *testing.T) {

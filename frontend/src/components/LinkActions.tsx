@@ -16,11 +16,12 @@ import {
   Spinner,
   copyToClipboard,
   primaryButtonClass,
+  secondaryButtonClass,
   type MenuItem,
 } from "./ui";
 
 /** One of the on-demand management surfaces. */
-export type LinkAction = "qr" | "alias" | "edit" | "targeting";
+export type LinkAction = "qr" | "alias" | "edit" | "schedule" | "targeting";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm " +
@@ -50,6 +51,7 @@ export function linkMenuItems(
     { label: "View QR code", onSelect: () => onAction("qr"), testid: "menu-qr" },
     { label: "Change alias", onSelect: () => onAction("alias"), testid: "menu-alias" },
     { label: "Edit destination", onSelect: () => onAction("edit"), testid: "menu-edit" },
+    { label: "Set schedule", onSelect: () => onAction("schedule"), testid: "menu-schedule" },
     { label: "Manage targeting", onSelect: () => onAction("targeting"), testid: "menu-targeting" },
   ];
 
@@ -71,12 +73,15 @@ export function linkMenuItems(
 export function QRPanel({ link, size = "lg" }: { link: ShortURL; size?: "sm" | "lg" }) {
   const [qrURL, setQrURL] = useState("");
   const [error, setError] = useState("");
+  const [fg, setFg] = useState("#000000");
+  const [bg, setBg] = useState("#ffffff");
+  const branded = fg.toLowerCase() !== "#000000" || bg.toLowerCase() !== "#ffffff";
 
   useEffect(() => {
     let objectURL = "";
     let cancelled = false;
 
-    fetchQRObjectURL(link.id)
+    fetchQRObjectURL(link.id, fg.replace("#", ""), bg.replace("#", ""))
       .then((url) => {
         objectURL = url;
         if (!cancelled) setQrURL(url);
@@ -89,8 +94,8 @@ export function QRPanel({ link, size = "lg" }: { link: ShortURL; size?: "sm" | "
       cancelled = true;
       if (objectURL) URL.revokeObjectURL(objectURL);
     };
-    // Re-fetch when the code (and therefore the short URL / QR) changes.
-  }, [link.id, link.code]);
+    // Re-fetch when the code (short URL) or the branded colors change.
+  }, [link.id, link.code, fg, bg]);
 
   const box = size === "sm" ? "h-32 w-32" : "h-52 w-52";
 
@@ -122,9 +127,47 @@ export function QRPanel({ link, size = "lg" }: { link: ShortURL; size?: "sm" | "
         Download PNG
       </a>
       {size === "lg" && (
-        <p className="max-w-full truncate text-center text-xs text-slate-400 dark:text-slate-500" title={link.short_url}>
-          Scans open {link.short_url}
-        </p>
+        <>
+          <div className="flex items-center justify-center gap-4 text-xs text-slate-600 dark:text-slate-300">
+            <label className="flex items-center gap-1.5">
+              Color
+              <input
+                type="color"
+                value={fg}
+                onChange={(e) => setFg(e.target.value)}
+                aria-label="QR code color"
+                data-testid="qr-fg"
+                className="h-6 w-7 cursor-pointer rounded border border-slate-300 dark:border-slate-700 bg-transparent"
+              />
+            </label>
+            <label className="flex items-center gap-1.5">
+              Background
+              <input
+                type="color"
+                value={bg}
+                onChange={(e) => setBg(e.target.value)}
+                aria-label="QR code background"
+                data-testid="qr-bg"
+                className="h-6 w-7 cursor-pointer rounded border border-slate-300 dark:border-slate-700 bg-transparent"
+              />
+            </label>
+            {branded && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFg("#000000");
+                  setBg("#ffffff");
+                }}
+                className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+          <p className="max-w-full truncate text-center text-xs text-slate-400 dark:text-slate-500" title={link.short_url}>
+            Scans open {link.short_url}
+          </p>
+        </>
       )}
     </div>
   );
@@ -392,6 +435,144 @@ export function EditDestinationForm({
 }
 
 // ---------------------------------------------------------------------------
+// Schedule editor (modal body): the activation/expiry window. datetime-local
+// inputs are in the browser's local zone; we convert to/from RFC3339 UTC.
+// ---------------------------------------------------------------------------
+
+/** RFC3339 (UTC) -> "YYYY-MM-DDTHH:mm" in local time for a datetime-local input. */
+function toLocalInput(rfc?: string | null): string {
+  if (!rfc) return "";
+
+  const d = new Date(rfc);
+  if (Number.isNaN(d.getTime())) return "";
+
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+export function ScheduleEditor({
+  link,
+  onSaved,
+}: {
+  link: ShortURL;
+  onSaved: (link: ShortURL) => void;
+}) {
+  const [activates, setActivates] = useState(toLocalInput(link.activates_at));
+  const [expires, setExpires] = useState(toLocalInput(link.expires_at));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const clearFeedback = () => {
+    setError("");
+    setNotice("");
+  };
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+
+    const a = activates ? new Date(activates).toISOString() : null;
+    const e = expires ? new Date(expires).toISOString() : null;
+
+    if (a && e && new Date(a) >= new Date(e)) {
+      setError("The activation time must be before the expiry time.");
+
+      return;
+    }
+
+    setBusy(true);
+    clearFeedback();
+
+    try {
+      const updated = await endpoints.setSchedule(link.id, a, e);
+      setActivates(toLocalInput(updated.activates_at));
+      setExpires(toLocalInput(updated.expires_at));
+      setNotice(a || e ? "Schedule saved." : "Schedule cleared — the link is always live.");
+      onSaved(updated);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError("Only the link's creator or an org owner can schedule it.");
+      } else if (err instanceof ApiError && err.status === 422) {
+        setError(err.message || "Please check the activation and expiry times.");
+      } else {
+        setError("Could not save the schedule. Please try again.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const fields = [
+    { id: "schedule-activates", label: "Activates at (optional)", value: activates, set: setActivates },
+    { id: "schedule-expires", label: "Expires at (optional)", value: expires, set: setExpires },
+  ];
+
+  return (
+    <div>
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        Choose when <span className="font-mono text-slate-700 dark:text-slate-200">/{link.code}</span> is
+        live. Outside the window it shows a “not active yet” or “expired” page instead of redirecting.
+        Leave a field blank for no bound. Times are in your local timezone.
+      </p>
+
+      <form onSubmit={(e) => void submit(e)} className="mt-3 space-y-3" data-testid="schedule-form">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {fields.map((f) => (
+            <div key={f.id}>
+              <label htmlFor={f.id} className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                {f.label}
+              </label>
+              <input
+                id={f.id}
+                type="datetime-local"
+                value={f.value}
+                onChange={(e) => {
+                  f.set(e.target.value);
+                  clearFeedback();
+                }}
+                className={`mt-1 ${inputClass}`}
+                data-testid={f.id}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={busy} className={primaryButtonClass} data-testid="schedule-save">
+            {busy && <Spinner className="h-4 w-4 text-white" />}
+            {busy ? "Saving…" : "Save schedule"}
+          </button>
+          {(activates || expires) && (
+            <button
+              type="button"
+              onClick={() => {
+                setActivates("");
+                setExpires("");
+                clearFeedback();
+              }}
+              className={secondaryButtonClass}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </form>
+
+      {error && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert" data-testid="schedule-error">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400" role="status" data-testid="schedule-notice">
+          {notice}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Overlay host: one component that renders the right modal/drawer for an
 // action. Mount with a non-null action; it calls onClose for Esc/backdrop/X.
 // ---------------------------------------------------------------------------
@@ -430,6 +611,14 @@ export function LinkActionOverlays({
     return (
       <Modal title="Edit destination" onClose={onClose} testid="edit-modal" maxWidth="max-w-lg">
         <EditDestinationForm link={link} onSaved={onUpdated} />
+      </Modal>
+    );
+  }
+
+  if (action === "schedule") {
+    return (
+      <Modal title="Schedule" onClose={onClose} testid="schedule-modal" maxWidth="max-w-lg">
+        <ScheduleEditor link={link} onSaved={onUpdated} />
       </Modal>
     );
   }

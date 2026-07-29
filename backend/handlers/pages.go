@@ -121,6 +121,19 @@ recorded.</p>
 </script>
 {{end}}`))
 
+// scheduledTmpl is served (404) when a link's activation time is in the
+// future. Neutral wording — the exact go-live time is not revealed.
+var scheduledTmpl = template.Must(newPageTemplate(`{{define "content"}}
+<h1>This link isn't active yet</h1>
+<p class="muted">This short link has been scheduled and is not live yet. Check back later.</p>
+{{end}}`))
+
+// expiredTmpl is served (410) when a link's expiry time has passed.
+var expiredTmpl = template.Must(newPageTemplate(`{{define "content"}}
+<h1 class="warn">This link has expired</h1>
+<p class="muted">This short link was set to expire and no longer redirects.</p>
+{{end}}`))
+
 // notFoundTmpl is the browser-facing 404 for an unknown code on the preview
 // route.
 var notFoundTmpl = template.Must(newPageTemplate(`{{define "content"}}

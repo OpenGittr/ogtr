@@ -100,6 +100,11 @@ export interface ShortURL {
   utm_medium?: string;
   utm_campaign?: string;
   deeplink_config: DeeplinkConfig | null;
+  /** Activation/expiry window (RFC3339); null means that bound is unset. */
+  activates_at?: string | null;
+  expires_at?: string | null;
+  /** True when a password gate is set (the hash itself is never sent). */
+  has_password?: boolean;
   visits: number;
   last_visit_at: string | null;
   created_at: string;

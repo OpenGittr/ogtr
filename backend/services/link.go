@@ -2,9 +2,12 @@ package services
 
 import (
 	"crypto/rand"
+	"image/color"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	qrcode "github.com/skip2/go-qrcode"
 	"gofr.dev/pkg/gofr"
@@ -460,15 +463,73 @@ func (s *LinkService) requireCreatorOrOwner(ctx *gofr.Context, link *models.Link
 	return nil
 }
 
+// SetSchedule sets a link's activation/expiry window (either bound may be nil
+// to leave it unset/clear it). Permission matches a destination edit — the
+// link's creator or an org OWNER. Outside the window the resolver serves a
+// scheduled/expired page instead of redirecting; the window never affects the
+// link's abuse status or its analytics.
+func (s *LinkService) SetSchedule(ctx *gofr.Context, orgID, actorID, id int64,
+	activatesAt, expiresAt *time.Time) (*models.Link, error) {
+	link, err := s.links.GetByID(ctx, orgID, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if link == nil || !visibleTo(link, actorID) {
+		return nil, apierrors.NotFound("link not found")
+	}
+
+	if err := s.requireCreatorOrOwner(ctx, link, orgID, actorID); err != nil {
+		return nil, err
+	}
+
+	if activatesAt != nil && expiresAt != nil && !activatesAt.Before(*expiresAt) {
+		return nil, apierrors.Unprocessable("activation time must be before expiry time")
+	}
+
+	if err := s.links.UpdateSchedule(ctx, orgID, id, activatesAt, expiresAt); err != nil {
+		return nil, err
+	}
+
+	return s.Get(ctx, orgID, actorID, id)
+}
+
 // QRCodePNG renders the link's short URL as a PNG QR code, generated on
-// demand — never stored (ARCHITECTURE.md §2).
-func (s *LinkService) QRCodePNG(ctx *gofr.Context, orgID, viewerID, id int64) ([]byte, error) {
+// demand — never stored (ARCHITECTURE.md §2). fg/bg are optional "RRGGBB" hex
+// colors for branded codes; blank or malformed values fall back to black on
+// white. The foreground must stay dark enough to scan — that is the caller's
+// (UI's) responsibility, not enforced here.
+func (s *LinkService) QRCodePNG(ctx *gofr.Context, orgID, viewerID, id int64, fg, bg string) ([]byte, error) {
 	link, err := s.Get(ctx, orgID, viewerID, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return qrcode.Encode(link.ShortURL, qrcode.Medium, qrImageSize)
+	q, err := qrcode.New(link.ShortURL, qrcode.Medium)
+	if err != nil {
+		return nil, err
+	}
+
+	q.ForegroundColor = parseHexColor(fg, color.Black)
+	q.BackgroundColor = parseHexColor(bg, color.White)
+
+	return q.PNG(qrImageSize)
+}
+
+// parseHexColor turns a "RRGGBB" (or "#RRGGBB") string into an opaque color,
+// returning def for blank or malformed input.
+func parseHexColor(s string, def color.Color) color.Color {
+	s = strings.TrimPrefix(strings.TrimSpace(s), "#")
+	if len(s) != 6 {
+		return def
+	}
+
+	v, err := strconv.ParseUint(s, 16, 32)
+	if err != nil {
+		return def
+	}
+
+	return color.RGBA{R: uint8(v >> 16), G: uint8(v >> 8), B: uint8(v), A: 255}
 }
 
 // withShortURL fills the computed short URL onto a link from the org's

@@ -3,6 +3,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"gofr.dev/pkg/gofr"
 
@@ -70,6 +71,7 @@ type LinkStore interface {
 	Count(ctx *gofr.Context, orgID, viewerID int64) (int64, error)
 	UpdateCode(ctx *gofr.Context, orgID, id int64, code string) error
 	UpdateDeeplink(ctx *gofr.Context, orgID, id int64, cfg *models.DeeplinkConfig) error
+	UpdateSchedule(ctx *gofr.Context, orgID, id int64, activatesAt, expiresAt *time.Time) error
 	UpdateDestination(ctx *gofr.Context, orgID, id int64, destinationURL string, utmSource, utmMedium, utmCampaign *string) error
 	InsertEdit(ctx *gofr.Context, e *models.LinkEdit) error
 	RecordVisit(ctx *gofr.Context, id int64) error

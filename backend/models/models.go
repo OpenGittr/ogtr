@@ -128,10 +128,19 @@ type Link struct {
 	UTMCampaign    *string         `json:"utm_campaign,omitempty"`
 	Status         string          `json:"status"`
 	Deeplink       *DeeplinkConfig `json:"deeplink_config"`
-	Visits         int64           `json:"visits"`
-	LastVisitAt    *time.Time      `json:"last_visit_at"`
-	CreatedAt      time.Time       `json:"created_at"`
-	ShortURL       string          `json:"short_url"`
+	// ActivatesAt / ExpiresAt bound the link's live window (either may be nil).
+	// Outside the window resolution serves a scheduled/expired page, not a 302.
+	ActivatesAt *time.Time `json:"activates_at,omitempty"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	// PasswordHash is the bcrypt hash gating the link; nil means no password.
+	// It NEVER serializes — the API exposes only the HasPassword boolean, set
+	// from this field on every read (see stores.scanLinkRow).
+	PasswordHash *string `json:"-"`
+	HasPassword  bool    `json:"has_password"`
+	Visits       int64   `json:"visits"`
+	LastVisitAt  *time.Time `json:"last_visit_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+	ShortURL     string     `json:"short_url"`
 }
 
 // AbuseReport is a row in the abuse_reports table: one visitor-submitted

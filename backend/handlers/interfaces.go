@@ -2,6 +2,8 @@
 package handlers
 
 import (
+	"time"
+
 	"gofr.dev/pkg/gofr"
 
 	"github.com/opengittr/ogtr/backend/auth"
@@ -28,8 +30,9 @@ type LinkService interface {
 	List(ctx *gofr.Context, orgID, viewerID int64, page int) (*services.LinkPage, error)
 	SetAlias(ctx *gofr.Context, orgID, viewerID, id int64, alias string) (*models.Link, error)
 	SetDeeplink(ctx *gofr.Context, orgID, viewerID, id int64, cfg *models.DeeplinkConfig) (*models.Link, error)
+	SetSchedule(ctx *gofr.Context, orgID, actorID, id int64, activatesAt, expiresAt *time.Time) (*models.Link, error)
 	UpdateDestination(ctx *gofr.Context, orgID, actorID, id int64, in services.EditInput) (*models.Link, error)
-	QRCodePNG(ctx *gofr.Context, orgID, viewerID, id int64) ([]byte, error)
+	QRCodePNG(ctx *gofr.Context, orgID, viewerID, id int64, fg, bg string) ([]byte, error)
 }
 
 // APIKeyService is the developer-API-key dependency of the handlers: key

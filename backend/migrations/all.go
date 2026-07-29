@@ -17,5 +17,6 @@ func All() map[int64]migration.Migrate {
 		20260713221852: createInitialSchema(),
 		20260721020158: addClicksOrgTsIndex(),
 		20260722172929: addUsersLastActive(),
+		20260728221207: addLinkGating(),
 	}
 }

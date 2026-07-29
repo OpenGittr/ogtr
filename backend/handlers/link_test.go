@@ -348,7 +348,7 @@ func TestLinkHandler_SetDeeplink_BadID(t *testing.T) {
 
 func TestLinkHandler_QR(t *testing.T) {
 	h, svc := newLinkHandler(t)
-	svc.EXPECT().QRCodePNG(gomock.Any(), int64(3), int64(7), int64(9)).Return([]byte("png-bytes"), nil)
+	svc.EXPECT().QRCodePNG(gomock.Any(), int64(3), int64(7), int64(9), "", "").Return([]byte("png-bytes"), nil)
 
 	ctx := newTestCtx(t, http.MethodGet, "/api/v1/links/9/qr", "", orgOwnerClaims(),
 		map[string]string{"id": "9"})
@@ -364,7 +364,7 @@ func TestLinkHandler_QR(t *testing.T) {
 
 func TestLinkHandler_QR_Error(t *testing.T) {
 	h, svc := newLinkHandler(t)
-	svc.EXPECT().QRCodePNG(gomock.Any(), int64(3), int64(7), int64(9)).Return(nil, assert.AnError)
+	svc.EXPECT().QRCodePNG(gomock.Any(), int64(3), int64(7), int64(9), "", "").Return(nil, assert.AnError)
 
 	ctx := newTestCtx(t, http.MethodGet, "/api/v1/links/9/qr", "", orgOwnerClaims(),
 		map[string]string{"id": "9"})

@@ -12,6 +12,7 @@ package services
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	auth "github.com/opengittr/ogtr/backend/auth"
 	geo "github.com/opengittr/ogtr/backend/geo"
@@ -707,6 +708,20 @@ func (m *MockLinkStore) UpdateDestination(ctx *gofr.Context, orgID, id int64, de
 func (mr *MockLinkStoreMockRecorder) UpdateDestination(ctx, orgID, id, destinationURL, utmSource, utmMedium, utmCampaign any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDestination", reflect.TypeOf((*MockLinkStore)(nil).UpdateDestination), ctx, orgID, id, destinationURL, utmSource, utmMedium, utmCampaign)
+}
+
+// UpdateSchedule mocks base method.
+func (m *MockLinkStore) UpdateSchedule(ctx *gofr.Context, orgID, id int64, activatesAt, expiresAt *time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSchedule", ctx, orgID, id, activatesAt, expiresAt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSchedule indicates an expected call of UpdateSchedule.
+func (mr *MockLinkStoreMockRecorder) UpdateSchedule(ctx, orgID, id, activatesAt, expiresAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSchedule", reflect.TypeOf((*MockLinkStore)(nil).UpdateSchedule), ctx, orgID, id, activatesAt, expiresAt)
 }
 
 // MockURLScanner is a mock of URLScanner interface.

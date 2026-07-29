@@ -191,6 +191,18 @@ export default function LinkDetailPage() {
               {ruleCount} {ruleCount === 1 ? "rule" : "rules"}
             </button>
           )}
+          {(link.activates_at || link.expires_at) && (
+            <button type="button" onClick={() => setAction("schedule")} className={statusChip} data-testid="chip-schedule">
+              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-12a1 1 0 1 0-2 0v4a1 1 0 0 0 .293.707l2.828 2.829a1 1 0 1 0 1.415-1.415L11 9.586V6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              scheduled
+            </button>
+          )}
 
           <span className={metaChip}>
             <span className="font-semibold text-slate-900 dark:text-white" data-testid="detail-visits">

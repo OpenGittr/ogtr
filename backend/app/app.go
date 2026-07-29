@@ -189,6 +189,7 @@ func setup(app *gofr.App, o *options) error {
 	app.PATCH("/api/v1/links/{id}", linkH.UpdateDestination)
 	app.PUT("/api/v1/links/{id}/alias", linkH.SetAlias)
 	app.PUT("/api/v1/links/{id}/deeplink", linkH.SetDeeplink)
+	app.PUT("/api/v1/links/{id}/schedule", linkH.SetSchedule)
 	app.GET("/api/v1/links/{id}/qr", linkH.QR)
 
 	// Targeting (§4 "Target rules"). Rules are org-scoped via the token; the

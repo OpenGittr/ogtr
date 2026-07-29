@@ -365,6 +365,17 @@ export const endpoints = {
   setDeeplink: (id: number, config: DeeplinkConfig | null) =>
     api<ShortURL>(`/api/v1/links/${id}/deeplink`, { method: "PUT", body: config }),
 
+  /**
+   * Sets the activation/expiry window. Each bound is an RFC3339 string or null
+   * (null clears it). Outside the window the link serves a scheduled/expired
+   * page instead of redirecting.
+   */
+  setSchedule: (id: number, activates_at: string | null, expires_at: string | null) =>
+    api<ShortURL>(`/api/v1/links/${id}/schedule`, {
+      method: "PUT",
+      body: { activates_at, expires_at },
+    }),
+
   rules: async (linkId: number) =>
     (await api<TargetRule[] | null>(`/api/v1/links/${linkId}/rules`)) ?? [],
 
@@ -418,11 +429,16 @@ export const endpoints = {
  * and returns an object URL. Callers must revoke it when done. Retries once
  * through the shared refresh flow on a stale access token.
  */
-export async function fetchQRObjectURL(linkId: number): Promise<string> {
+export async function fetchQRObjectURL(linkId: number, fg?: string, bg?: string): Promise<string> {
   const doFetch = () => {
     const tokens = getTokens();
 
-    return fetch(`${BASE}/api/v1/links/${linkId}/qr`, {
+    const params = new URLSearchParams();
+    if (fg) params.set("fg", fg);
+    if (bg) params.set("bg", bg);
+    const query = params.toString();
+
+    return fetch(`${BASE}/api/v1/links/${linkId}/qr${query ? `?${query}` : ""}`, {
       headers: tokens ? { Authorization: `Bearer ${tokens.access_token}` } : {},
     });
   };

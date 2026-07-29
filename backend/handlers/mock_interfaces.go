@@ -11,6 +11,7 @@ package handlers
 
 import (
 	reflect "reflect"
+	time "time"
 
 	auth "github.com/opengittr/ogtr/backend/auth"
 	models "github.com/opengittr/ogtr/backend/models"
@@ -159,18 +160,18 @@ func (mr *MockLinkServiceMockRecorder) List(ctx, orgID, viewerID, page any) *gom
 }
 
 // QRCodePNG mocks base method.
-func (m *MockLinkService) QRCodePNG(ctx *gofr.Context, orgID, viewerID, id int64) ([]byte, error) {
+func (m *MockLinkService) QRCodePNG(ctx *gofr.Context, orgID, viewerID, id int64, fg, bg string) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QRCodePNG", ctx, orgID, viewerID, id)
+	ret := m.ctrl.Call(m, "QRCodePNG", ctx, orgID, viewerID, id, fg, bg)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // QRCodePNG indicates an expected call of QRCodePNG.
-func (mr *MockLinkServiceMockRecorder) QRCodePNG(ctx, orgID, viewerID, id any) *gomock.Call {
+func (mr *MockLinkServiceMockRecorder) QRCodePNG(ctx, orgID, viewerID, id, fg, bg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QRCodePNG", reflect.TypeOf((*MockLinkService)(nil).QRCodePNG), ctx, orgID, viewerID, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QRCodePNG", reflect.TypeOf((*MockLinkService)(nil).QRCodePNG), ctx, orgID, viewerID, id, fg, bg)
 }
 
 // SetAlias mocks base method.
@@ -201,6 +202,21 @@ func (m *MockLinkService) SetDeeplink(ctx *gofr.Context, orgID, viewerID, id int
 func (mr *MockLinkServiceMockRecorder) SetDeeplink(ctx, orgID, viewerID, id, cfg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDeeplink", reflect.TypeOf((*MockLinkService)(nil).SetDeeplink), ctx, orgID, viewerID, id, cfg)
+}
+
+// SetSchedule mocks base method.
+func (m *MockLinkService) SetSchedule(ctx *gofr.Context, orgID, actorID, id int64, activatesAt, expiresAt *time.Time) (*models.Link, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetSchedule", ctx, orgID, actorID, id, activatesAt, expiresAt)
+	ret0, _ := ret[0].(*models.Link)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetSchedule indicates an expected call of SetSchedule.
+func (mr *MockLinkServiceMockRecorder) SetSchedule(ctx, orgID, actorID, id, activatesAt, expiresAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSchedule", reflect.TypeOf((*MockLinkService)(nil).SetSchedule), ctx, orgID, actorID, id, activatesAt, expiresAt)
 }
 
 // Shorten mocks base method.

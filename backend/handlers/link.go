@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"strings"
+	"time"
 
 	"gofr.dev/pkg/gofr"
 	gofrHTTP "gofr.dev/pkg/gofr/http"
@@ -224,6 +226,60 @@ func (h *LinkHandler) SetDeeplink(ctx *gofr.Context) (any, error) {
 	return h.links.SetDeeplink(ctx, claims.OrgID, claims.UserID, id, &cfg)
 }
 
+// setScheduleRequest is the PUT /api/v1/links/{id}/schedule body: RFC3339
+// timestamps, each optional — a null or absent field leaves that bound unset
+// (clearing it). Sending {} clears both.
+type setScheduleRequest struct {
+	ActivatesAt *string `json:"activates_at"`
+	ExpiresAt   *string `json:"expires_at"`
+}
+
+// SetSchedule handles PUT /api/v1/links/{id}/schedule — the link's
+// activation/expiry window. Outside the window the link resolves to a
+// scheduled/expired page instead of redirecting.
+func (h *LinkHandler) SetSchedule(ctx *gofr.Context) (any, error) {
+	claims, err := orgClaims(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := pathID(ctx, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	var req setScheduleRequest
+	if err := ctx.Bind(&req); err != nil {
+		return nil, gofrHTTP.ErrorInvalidParam{Params: []string{"body"}}
+	}
+
+	activatesAt, err := parseOptionalTime(req.ActivatesAt)
+	if err != nil {
+		return nil, apierrors.Unprocessable("activates_at must be an RFC3339 timestamp")
+	}
+
+	expiresAt, err := parseOptionalTime(req.ExpiresAt)
+	if err != nil {
+		return nil, apierrors.Unprocessable("expires_at must be an RFC3339 timestamp")
+	}
+
+	return h.links.SetSchedule(ctx, claims.OrgID, claims.UserID, id, activatesAt, expiresAt)
+}
+
+// parseOptionalTime parses an optional RFC3339 timestamp: nil or "" -> nil.
+func parseOptionalTime(s *string) (*time.Time, error) {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return nil, nil
+	}
+
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(*s))
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
+}
+
 // QR handles GET /api/v1/links/{id}/qr — the short URL as a PNG QR code.
 // The immutable Cache-Control header is set by the CacheControl middleware.
 func (h *LinkHandler) QR(ctx *gofr.Context) (any, error) {
@@ -237,7 +293,8 @@ func (h *LinkHandler) QR(ctx *gofr.Context) (any, error) {
 		return nil, err
 	}
 
-	png, err := h.links.QRCodePNG(ctx, claims.OrgID, claims.UserID, id)
+	// Optional branded colors: ?fg=RRGGBB&bg=RRGGBB (blank = black on white).
+	png, err := h.links.QRCodePNG(ctx, claims.OrgID, claims.UserID, id, ctx.Param("fg"), ctx.Param("bg"))
 	if err != nil {
 		return nil, err
 	}

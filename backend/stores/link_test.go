@@ -14,7 +14,8 @@ import (
 
 const (
 	selectLinkPrefix = "SELECT id, org_id, user_id, api_key_id, code, destination_url, type, status, " +
-		"utm_source, utm_medium, utm_campaign, deeplink_config, visits, last_visit_at, created_at FROM links "
+		"utm_source, utm_medium, utm_campaign, deeplink_config, activates_at, expires_at, password_hash, " +
+		"visits, last_visit_at, created_at FROM links "
 
 	selectLinkByID          = selectLinkPrefix + "WHERE id = ? AND org_id = ?"
 	selectLinkByCode        = selectLinkPrefix + "WHERE code = ?"
@@ -32,12 +33,13 @@ const (
 
 var linkColumnNames = []string{
 	"id", "org_id", "user_id", "api_key_id", "code", "destination_url", "type", "status",
-	"utm_source", "utm_medium", "utm_campaign", "deeplink_config", "visits", "last_visit_at", "created_at",
+	"utm_source", "utm_medium", "utm_campaign", "deeplink_config", "activates_at", "expires_at", "password_hash",
+	"visits", "last_visit_at", "created_at",
 }
 
 func linkRows(id int64, code, dest string) *sqlmock.Rows {
 	return sqlmock.NewRows(linkColumnNames).
-		AddRow(id, 3, 7, nil, code, dest, "PUBLIC", "ACTIVE", nil, nil, nil, nil, 5, nil, time.Now())
+		AddRow(id, 3, 7, nil, code, dest, "PUBLIC", "ACTIVE", nil, nil, nil, nil, nil, nil, nil, 5, nil, time.Now())
 }
 
 func emptyLinkRows() *sqlmock.Rows { return sqlmock.NewRows(linkColumnNames) }
@@ -223,7 +225,7 @@ func TestLinkStore_List(t *testing.T) {
 	ctx, mocks := newTestCtx(t)
 	mocks.SQL.ExpectQuery(selectLinkPage).WithArgs(int64(3), int64(7), 10, 10).
 		WillReturnRows(linkRows(9, "abc1234", "https://x.co").
-			AddRow(8, 3, 7, nil, "zzz9999", "https://y.co", "PRIVATE", "ACTIVE", nil, nil, nil, nil, 0, nil, time.Now()))
+			AddRow(8, 3, 7, nil, "zzz9999", "https://y.co", "PRIVATE", "ACTIVE", nil, nil, nil, nil, nil, nil, nil, 0, nil, time.Now()))
 
 	links, err := NewLinkStore().List(ctx, 3, 7, 10, 10)
 	require.NoError(t, err)
@@ -267,7 +269,7 @@ func TestLinkStore_ScanNullUserID(t *testing.T) {
 	ctx, mocks := newTestCtx(t)
 	mocks.SQL.ExpectQuery(selectLinkByID).WithArgs(int64(9), int64(3)).
 		WillReturnRows(sqlmock.NewRows(linkColumnNames).
-			AddRow(9, 3, nil, 11, "abc1234", "https://x.co", "PUBLIC", "ACTIVE", nil, nil, nil, nil, 0, nil, time.Now()))
+			AddRow(9, 3, nil, 11, "abc1234", "https://x.co", "PUBLIC", "ACTIVE", nil, nil, nil, nil, nil, nil, nil, 0, nil, time.Now()))
 
 	link, err := NewLinkStore().GetByID(ctx, 3, 9)
 	require.NoError(t, err)
@@ -284,7 +286,7 @@ func TestLinkStore_ScanDeeplinkConfig(t *testing.T) {
 	ctx, mocks := newTestCtx(t)
 	mocks.SQL.ExpectQuery(selectLinkByID).WithArgs(int64(9), int64(3)).
 		WillReturnRows(sqlmock.NewRows(linkColumnNames).
-			AddRow(9, 3, 7, nil, "abc1234", "https://x.co", "PUBLIC", "ACTIVE", nil, nil, nil, []byte(raw), 5, nil, time.Now()))
+			AddRow(9, 3, 7, nil, "abc1234", "https://x.co", "PUBLIC", "ACTIVE", nil, nil, nil, []byte(raw), nil, nil, nil, 5, nil, time.Now()))
 
 	link, err := NewLinkStore().GetByID(ctx, 3, 9)
 	require.NoError(t, err)

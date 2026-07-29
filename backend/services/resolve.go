@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"gofr.dev/pkg/gofr"
 
@@ -41,6 +42,22 @@ func (*DisabledLinkError) Error() string {
 
 // StatusCode makes gofr answer 410 Gone.
 func (*DisabledLinkError) StatusCode() int { return http.StatusGone }
+
+// ScheduledLinkError is returned when a link's activation time is in the
+// future: it exists but is not live yet. 404 — indistinguishable from an
+// unknown code to a stranger, so a scheduled campaign link does not leak
+// before launch; the redirect handler renders a neutral "not active yet" page.
+type ScheduledLinkError struct{ Code string }
+
+func (*ScheduledLinkError) Error() string  { return "this link is not active yet" }
+func (*ScheduledLinkError) StatusCode() int { return http.StatusNotFound }
+
+// ExpiredLinkError is returned when a link's expiry time has passed: it was
+// live and no longer is. 410 Gone, like a disabled link — the code existed.
+type ExpiredLinkError struct{ Code string }
+
+func (*ExpiredLinkError) Error() string  { return "this link has expired" }
+func (*ExpiredLinkError) StatusCode() int { return http.StatusGone }
 
 // Preview is what GET /{code}+ shows a cautious visitor: the destination as
 // text (never a styled call-to-action), plus whether the link was disabled.
@@ -106,6 +123,19 @@ func (s *ResolveService) Resolve(ctx *gofr.Context, code, tag string, env visito
 	// pretending otherwise would just invite re-shortening the destination.
 	if link.Status == models.LinkStatusDisabledAbuse {
 		return nil, &DisabledLinkError{Code: link.Code, AbuseContact: s.abuseContact}
+	}
+
+	// Scheduled activation / expiry window (either bound may be unset). Checked
+	// before any click is recorded: an out-of-window link redirects nowhere and
+	// counts nothing. Not-yet-active is a 404 (nothing leaks pre-launch);
+	// expired is a 410 Gone (the code existed).
+	now := time.Now()
+	if link.ActivatesAt != nil && now.Before(*link.ActivatesAt) {
+		return nil, &ScheduledLinkError{Code: link.Code}
+	}
+
+	if link.ExpiresAt != nil && !now.Before(*link.ExpiresAt) {
+		return nil, &ExpiredLinkError{Code: link.Code}
 	}
 
 	// One GeoIP lookup per click: the city feeds target rules, the full

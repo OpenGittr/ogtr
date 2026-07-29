@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"gofr.dev/pkg/gofr"
 
@@ -19,7 +20,8 @@ type LinkStore struct{}
 func NewLinkStore() *LinkStore { return &LinkStore{} }
 
 const linkColumns = "id, org_id, user_id, api_key_id, code, destination_url, type, status, " +
-	"utm_source, utm_medium, utm_campaign, deeplink_config, visits, last_visit_at, created_at"
+	"utm_source, utm_medium, utm_campaign, deeplink_config, activates_at, expires_at, password_hash, " +
+	"visits, last_visit_at, created_at"
 
 // visibleFilter hides other users' PRIVATE links (FEATURES.md §1.1); the
 // caller binds org_id then the viewer's user_id.
@@ -162,6 +164,26 @@ func (*LinkStore) UpdateDeeplink(ctx *gofr.Context, orgID, id int64, cfg *models
 	return err
 }
 
+// UpdateSchedule sets a link's activation/expiry window; nil clears a bound.
+// Only the owner-facing management API calls this — the resolution path never
+// writes link config (FEATURES.md INV-3).
+func (*LinkStore) UpdateSchedule(ctx *gofr.Context, orgID, id int64, activatesAt, expiresAt *time.Time) error {
+	_, err := ctx.SQL.ExecContext(ctx,
+		"UPDATE links SET activates_at = ?, expires_at = ? WHERE id = ? AND org_id = ?",
+		activatesAt, expiresAt, id, orgID)
+
+	return err
+}
+
+// UpdatePassword sets (non-nil bcrypt hash) or clears (nil) a link's password
+// gate. The plaintext never reaches the store — the service hashes it first.
+func (*LinkStore) UpdatePassword(ctx *gofr.Context, orgID, id int64, passwordHash *string) error {
+	_, err := ctx.SQL.ExecContext(ctx,
+		"UPDATE links SET password_hash = ? WHERE id = ? AND org_id = ?", passwordHash, id, orgID)
+
+	return err
+}
+
 // UpdateDestination repoints a link at a new destination URL, replacing the
 // as-created UTM columns with the edit's values. Only the owner-facing
 // management API calls this (PATCH /api/v1/links/{id}); permission checks
@@ -246,7 +268,8 @@ func scanLinkRow(row rowScanner) (*models.Link, error) {
 	)
 
 	err := row.Scan(&l.ID, &l.OrgID, &l.UserID, &l.APIKeyID, &l.Code, &l.DestinationURL, &l.Type, &l.Status,
-		&l.UTMSource, &l.UTMMedium, &l.UTMCampaign, &rawDeeplink, &l.Visits, &l.LastVisitAt, &l.CreatedAt)
+		&l.UTMSource, &l.UTMMedium, &l.UTMCampaign, &rawDeeplink, &l.ActivatesAt, &l.ExpiresAt, &l.PasswordHash,
+		&l.Visits, &l.LastVisitAt, &l.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -256,6 +279,9 @@ func scanLinkRow(row rowScanner) (*models.Link, error) {
 			return nil, err
 		}
 	}
+
+	// The bcrypt hash never leaves the store layer; callers see only the flag.
+	l.HasPassword = l.PasswordHash != nil
 
 	return &l, nil
 }

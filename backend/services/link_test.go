@@ -526,7 +526,7 @@ func TestLinkService_QRCodePNG(t *testing.T) {
 	links.EXPECT().GetByID(gomock.Any(), int64(3), int64(9)).
 		Return(publicLink(9, "abc1234", "https://x.co"), nil)
 
-	png, err := svc.QRCodePNG(ctx, 3, 7, 9)
+	png, err := svc.QRCodePNG(ctx, 3, 7, 9, "", "")
 
 	require.NoError(t, err)
 	assert.True(t, bytes.HasPrefix(png, []byte("\x89PNG")), "should be a PNG image")
@@ -843,7 +843,7 @@ func TestLinkService_ShortURLDisplay(t *testing.T) {
 		links.EXPECT().GetByID(gomock.Any(), int64(3), int64(9)).
 			Return(publicLink(9, "abc1234", "https://example.com"), nil)
 
-		withDomain, err := svc.QRCodePNG(ctx, 3, 7, 9)
+		withDomain, err := svc.QRCodePNG(ctx, 3, 7, 9, "", "")
 		require.NoError(t, err)
 
 		svc2, links2, _, domains2, ctx2 := newLinkServiceWithDomains(t)
@@ -851,7 +851,7 @@ func TestLinkService_ShortURLDisplay(t *testing.T) {
 		links2.EXPECT().GetByID(gomock.Any(), int64(3), int64(9)).
 			Return(publicLink(9, "abc1234", "https://example.com"), nil)
 
-		withoutDomain, err := svc2.QRCodePNG(ctx2, 3, 7, 9)
+		withoutDomain, err := svc2.QRCodePNG(ctx2, 3, 7, 9, "", "")
 		require.NoError(t, err)
 
 		assert.False(t, bytes.Equal(withDomain, withoutDomain),
