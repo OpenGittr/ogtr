@@ -11,12 +11,11 @@ import AnalyticsSection from "../components/AnalyticsSection";
 import {
   LinkActionOverlays,
   QRPanel,
-  linkMenuItems,
   looksLikeAlias,
   type LinkAction,
 } from "../components/LinkActions";
 import { formatDateTime } from "../components/LinkList";
-import { CopyButton, ErrorBanner, KebabMenu, PageLoader } from "../components/ui";
+import { CopyButton, ErrorBanner, PageLoader } from "../components/ui";
 import { ApiError, endpoints } from "../lib/api";
 import type { ShortURL } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
@@ -103,9 +102,14 @@ export default function LinkDetailPage() {
   const metaChip =
     "inline-flex max-w-full items-center gap-1.5 rounded-full bg-slate-50 dark:bg-slate-900 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 ring-1 ring-inset ring-slate-200 dark:ring-slate-700";
 
-  const statusChip =
-    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 text-xs font-medium " +
-    "text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-500/30 transition hover:bg-indigo-100 dark:hover:bg-indigo-500/20";
+  // Always-visible action buttons: a filled indigo style marks a surface that
+  // is already configured, a plain outline one that is available but unused —
+  // so every feature is discoverable without opening the kebab menu.
+  const actionButton = (active: boolean) =>
+    "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition " +
+    (active
+      ? "border-indigo-300 dark:border-indigo-500/50 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
+      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800/60");
 
   const hasDeeplinks = Boolean(link.deeplink_config?.android || link.deeplink_config?.ios);
   const hasAlias = looksLikeAlias(link.code);
@@ -163,50 +167,29 @@ export default function LinkDetailPage() {
             </div>
           </div>
 
-          {/* Same actions as the list menu (minus "View analytics" — this is it) */}
-          <KebabMenu
-            testid="detail-menu"
-            items={linkMenuItems(link, setAction).filter((i) => i.testid !== "menu-qr")}
-          />
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-slate-100 dark:border-slate-800 pt-4">
-          {/* Clickable status chips: configured-ness at a glance, forms on demand */}
-          {hasAlias && (
-            <button type="button" onClick={() => setAction("alias")} className={statusChip} data-testid="chip-alias">
-              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path
-                  fillRule="evenodd"
-                  d="M12.586 4.586a2 2 0 1 1 2.828 2.828l-3 3a2 2 0 0 1-2.828 0 1 1 0 0 0-1.414 1.414 4 4 0 0 0 5.656 0l3-3a4 4 0 0 0-5.656-5.656l-1.5 1.5a1 1 0 1 0 1.414 1.414l1.5-1.5zm-5 5a2 2 0 0 1 2.828 0 1 1 0 1 0 1.414-1.414 4 4 0 0 0-5.656 0l-3 3a4 4 0 1 0 5.656 5.656l1.5-1.5a1 1 0 1 0-1.414-1.414l-1.5 1.5a2 2 0 1 1-2.828-2.828l3-3z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              alias set
-            </button>
-          )}
-          {hasDeeplinks && (
-            <button type="button" onClick={() => setAction("targeting")} className={statusChip} data-testid="chip-deeplink">
-              deep links
-            </button>
-          )}
-          {ruleCount > 0 && (
-            <button type="button" onClick={() => setAction("targeting")} className={statusChip} data-testid="chip-rules">
-              {ruleCount} {ruleCount === 1 ? "rule" : "rules"}
-            </button>
-          )}
-          {(link.activates_at || link.expires_at) && (
-            <button type="button" onClick={() => setAction("schedule")} className={statusChip} data-testid="chip-schedule">
-              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-12a1 1 0 1 0-2 0v4a1 1 0 0 0 .293.707l2.828 2.829a1 1 0 1 0 1.415-1.415L11 9.586V6z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              scheduled
-            </button>
-          )}
+        {/* Always-visible action toolbar — every management surface is a labeled
+            button (discoverable without opening a menu); a filled one is already
+            configured, an outline one is available. QR lives in its own card. */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+          <button type="button" onClick={() => setAction("edit")} className={actionButton(false)} data-testid="action-edit">
+            Edit destination
+          </button>
+          <button type="button" onClick={() => setAction("alias")} className={actionButton(hasAlias)} data-testid="action-alias">
+            {hasAlias ? "Alias set" : "Custom alias"}
+          </button>
+          <button type="button" onClick={() => setAction("schedule")} className={actionButton(Boolean(link.activates_at || link.expires_at))} data-testid="action-schedule">
+            {link.activates_at || link.expires_at ? "Scheduled" : "Schedule"}
+          </button>
+          <button type="button" onClick={() => setAction("targeting")} className={actionButton(hasDeeplinks || ruleCount > 0)} data-testid="action-targeting">
+            Targeting{ruleCount > 0 ? ` · ${ruleCount} ${ruleCount === 1 ? "rule" : "rules"}` : ""}
+            {hasDeeplinks && ruleCount === 0 ? " · deep links" : ""}
+          </button>
+        </div>
 
+        {/* Informational meta chips */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <span className={metaChip}>
             <span className="font-semibold text-slate-900 dark:text-white" data-testid="detail-visits">
               {link.visits}
