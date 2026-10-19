@@ -105,3 +105,10 @@ type AdminDayStat struct {
 	LinksCreated int64  `json:"links_created"`
 	Clicks       int64  `json:"clicks"`
 }
+
+// AdminBrandPrefix is one brand-prefix request as listed to the instance
+// operator: the row (with the sender evidence to review) plus its org's name.
+type AdminBrandPrefix struct {
+	BrandPrefix
+	OrgName string `json:"org_name"`
+}

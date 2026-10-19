@@ -306,6 +306,40 @@ export interface OrgDomain {
 }
 
 // ---------------------------------------------------------------------------
+// Brand prefixes (backend models.BrandPrefix — FEATURES.md §1.7)
+// ---------------------------------------------------------------------------
+
+export type BrandPrefixStatus = "PENDING" | "APPROVED" | "REJECTED" | "REVOKED";
+
+/**
+ * A path-scoped entry point on the shared short domain:
+ * <short-domain>/<prefix>/<code>. Requested with DLT sender evidence and
+ * approved by the operator; only APPROVED prefixes resolve. decision_reason
+ * explains a rejection or revocation.
+ */
+export interface BrandPrefix {
+  id: number;
+  org_id: number;
+  prefix: string;
+  status: BrandPrefixStatus;
+  is_primary: boolean;
+  registry: string;
+  entity_id: string;
+  header: string;
+  entity_name: string;
+  decision_reason: string | null;
+  decided_at: string | null;
+  created_at: string;
+}
+
+export interface BrandPrefixInput {
+  prefix: string;
+  entity_id: string;
+  header: string;
+  entity_name: string;
+}
+
+// ---------------------------------------------------------------------------
 // Developer API keys (backend models.APIKey — FEATURES.md §8)
 // ---------------------------------------------------------------------------
 

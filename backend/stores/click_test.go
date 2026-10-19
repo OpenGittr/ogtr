@@ -18,6 +18,7 @@ func TestClickStore_Insert(t *testing.T) {
 		Referrer: "https://google.com", IP: "203.0.113.9",
 		City: "", Region: "Karnataka", Country: "India",
 		IsDeeplink: false, TargetMatched: false, CustomTagID: "tag-1",
+		EntryPoint: "PREFIX", BrandPrefixID: 4,
 	}
 
 	tests := []struct {
@@ -36,7 +37,7 @@ func TestClickStore_Insert(t *testing.T) {
 					WithArgs(int64(3), int64(9), "google", "referrer by Mobile", nil,
 						"Mobile", "iOS", "Safari", "https://google.com", "203.0.113.9",
 						nil, "India", "Karnataka",
-						false, false, "tag-1").
+						false, false, "tag-1", "PREFIX", int64(4)).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 			},
 		},
@@ -48,7 +49,7 @@ func TestClickStore_Insert(t *testing.T) {
 					WithArgs(int64(3), int64(9), "google", "referrer by Mobile", nil,
 						"Mobile", "iOS", "Safari", "https://google.com", "203.0.113.9",
 						nil, "India", "Karnataka",
-						false, false, "tag-1").
+						false, false, "tag-1", "PREFIX", int64(4)).
 					WillReturnError(errDB)
 			},
 			wantErr: true,
@@ -70,4 +71,6 @@ func TestClickStore_Insert(t *testing.T) {
 func TestNullable(t *testing.T) {
 	assert.Nil(t, nullable(""))
 	require.Equal(t, "x", nullable("x"))
+	assert.Nil(t, nullableID(0))
+	require.Equal(t, int64(4), nullableID(4))
 }

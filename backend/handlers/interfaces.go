@@ -60,10 +60,11 @@ type CityIndex interface {
 }
 
 // ResolveService is the resolution dependency of the redirect/resolve
-// handlers. PreviewByCode backs GET /{code}+ (no click recorded).
+// handlers. PreviewByCode backs GET /{code}+ (no click recorded). prefix is
+// the brand prefix of a /{prefix}/{code} request ("" for /{code}).
 type ResolveService interface {
-	Resolve(ctx *gofr.Context, code, tag string, env visitor.Env) (*services.Resolution, error)
-	PreviewByCode(ctx *gofr.Context, code string, env visitor.Env) (*services.Preview, error)
+	Resolve(ctx *gofr.Context, prefix, code, tag string, env visitor.Env) (*services.Resolution, error)
+	PreviewByCode(ctx *gofr.Context, prefix, code string, env visitor.Env) (*services.Preview, error)
 }
 
 // ReportService is the public abuse-reporting dependency of the handlers.
@@ -92,6 +93,21 @@ type AdminService interface {
 	DisableLink(ctx *gofr.Context, id int64, reason string) (*models.AdminLinkDetail, error)
 	EnableLink(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error)
 	DailyStats(ctx *gofr.Context, days int) (*services.AdminDailyStats, error)
+	Prefixes(ctx *gofr.Context, status string, page int) (*services.AdminPrefixesPage, error)
+	ApprovePrefix(ctx *gofr.Context, id int64) (*models.AdminBrandPrefix, error)
+	RejectPrefix(ctx *gofr.Context, id int64, reason string) (*models.AdminBrandPrefix, error)
+	RevokePrefix(ctx *gofr.Context, id int64, reason string) (*models.AdminBrandPrefix, error)
+	ReleasePrefix(ctx *gofr.Context, id int64) error
+}
+
+// BrandPrefixService is the brand-prefix dependency of the handlers.
+// Mutations are OWNER-only (enforced in the service against the DB role);
+// listing is open to all org members.
+type BrandPrefixService interface {
+	Create(ctx *gofr.Context, orgID, actorID int64, in services.BrandPrefixInput) (*models.BrandPrefix, error)
+	List(ctx *gofr.Context, orgID int64) ([]models.BrandPrefix, error)
+	SetPrimary(ctx *gofr.Context, orgID, actorID, id int64) (*models.BrandPrefix, error)
+	Delete(ctx *gofr.Context, orgID, actorID, id int64) error
 }
 
 // DomainService is the custom-domain dependency of the handlers. Mutations

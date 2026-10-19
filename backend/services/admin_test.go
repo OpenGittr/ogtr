@@ -28,7 +28,7 @@ func newAdminService(t *testing.T) (*AdminService, *MockAdminStore, *MockLinkSta
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
-	return NewAdminService(store, links), store, links, ctx
+	return NewAdminService(store, links, nil), store, links, ctx
 }
 
 // fixedAdminNow pins the admin clock for window math.

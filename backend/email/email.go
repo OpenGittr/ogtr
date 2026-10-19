@@ -98,6 +98,43 @@ func (s *Sender) SendInvite(toEmail, orgName, inviterName string) {
 		render("You've been invited", body, &cta{Label: "Accept your invite", URL: s.appURL}))
 }
 
+// SendPrefixDecision tells an org owner the operator's decision on a brand
+// prefix request: approved, rejected (with reason) or revoked (with reason).
+// Unknown statuses send nothing.
+func (s *Sender) SendPrefixDecision(toEmail, prefix, status, reason string) {
+	if s == nil || !s.enabled {
+		return
+	}
+
+	p := html.EscapeString(prefix)
+
+	var subject, heading, body string
+
+	switch status {
+	case "APPROVED":
+		subject = fmt.Sprintf("Your brand prefix %s is approved", prefix)
+		heading = "Brand prefix approved"
+		body = fmt.Sprintf(`<p style="margin:0 0 12px;">Your brand prefix <strong>%s</strong> is approved — `+
+			`your links now also work under it.</p>`+
+			`<p style="margin:0;">Make it your primary prefix in Settings to show it on every short link and QR code.</p>`, p)
+	case "REJECTED":
+		subject = fmt.Sprintf("Your brand prefix %s was not approved", prefix)
+		heading = "Brand prefix not approved"
+		body = fmt.Sprintf(`<p style="margin:0 0 12px;">Your request for the brand prefix <strong>%s</strong> `+
+			`was not approved.</p><p style="margin:0;">Reason: %s</p>`, p, html.EscapeString(reason))
+	case "REVOKED":
+		subject = fmt.Sprintf("Your brand prefix %s was revoked", prefix)
+		heading = "Brand prefix revoked"
+		body = fmt.Sprintf(`<p style="margin:0 0 12px;">Your brand prefix <strong>%s</strong> was revoked; links `+
+			`under it no longer resolve. Your links keep working at their plain short URLs.</p>`+
+			`<p style="margin:0;">Reason: %s</p>`, p, html.EscapeString(reason))
+	default:
+		return
+	}
+
+	s.sendAsync(toEmail, subject, render(heading, body, &cta{Label: "Open settings", URL: s.appURL}))
+}
+
 func (s *Sender) sendAsync(to, subject, htmlBody string) {
 	go func() {
 		if err := s.send(to, subject, htmlBody); err != nil {

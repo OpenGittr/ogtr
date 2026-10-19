@@ -126,6 +126,28 @@ type DomainStore interface {
 	Delete(ctx *gofr.Context, orgID, id int64) (bool, error)
 }
 
+// BrandPrefixStore is the brand_prefixes data-access dependency (path-scoped
+// entry points on the shared short domain, FEATURES.md §1.7). GetByPrefix and
+// IsHeld are deliberately not org-scoped: prefixes are a deployment-wide
+// namespace and the redirect path derives the org FROM the prefix. All prefix
+// comparisons are case-insensitive.
+type BrandPrefixStore interface {
+	Create(ctx *gofr.Context, p *models.BrandPrefix) (*models.BrandPrefix, error)
+	GetByID(ctx *gofr.Context, orgID, id int64) (*models.BrandPrefix, error)
+	GetByPrefix(ctx *gofr.Context, prefix string) (*models.BrandPrefix, error)
+	// IsHeld reports whether the value is a PENDING, APPROVED or REVOKED
+	// prefix of any org — such a value can never become a short code.
+	IsHeld(ctx *gofr.Context, value string) (bool, error)
+	ListByOrg(ctx *gofr.Context, orgID int64) ([]models.BrandPrefix, error)
+	CountHeldByOrg(ctx *gofr.Context, orgID int64) (int, error)
+	PrimaryApprovedPrefix(ctx *gofr.Context, orgID int64) (string, error)
+	// SetPrimary transactionally swaps the org's single primary to this
+	// prefix; (false, nil) means it was not an APPROVED row of this org.
+	SetPrimary(ctx *gofr.Context, orgID, id int64) (bool, error)
+	// Delete removes a non-REVOKED prefix; false when nothing was deleted.
+	Delete(ctx *gofr.Context, orgID, id int64) (bool, error)
+}
+
 // DNSResolver looks up DNS TXT records for domain-ownership verification.
 // *net.Resolver satisfies it directly — production wires net.DefaultResolver
 // and tests substitute a mock; the verification code path is identical in
@@ -199,6 +221,11 @@ type AdminStore interface {
 	SignupsPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error)
 	LinksCreatedPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error)
 	ClicksPerDay(ctx *gofr.Context, since string) ([]models.DayCount, error)
+	ListPrefixes(ctx *gofr.Context, status string, limit, offset int) ([]models.AdminBrandPrefix, error)
+	CountPrefixes(ctx *gofr.Context, status string) (int64, error)
+	GetPrefix(ctx *gofr.Context, id int64) (*models.AdminBrandPrefix, error)
+	DecidePrefix(ctx *gofr.Context, id int64, from, to string, reason *string) (bool, error)
+	ReleasePrefix(ctx *gofr.Context, id int64) (bool, error)
 }
 
 // LinkStatusStore is the admin service's link-status dependency — the same

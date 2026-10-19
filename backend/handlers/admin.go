@@ -8,6 +8,8 @@ import (
 
 	"gofr.dev/pkg/gofr"
 	gofrHTTP "gofr.dev/pkg/gofr/http"
+
+	"github.com/opengittr/ogtr/backend/models"
 )
 
 // AdminHandler serves the instance-admin API under /api/internal/*
@@ -182,6 +184,88 @@ func (h *AdminHandler) DailyStats(ctx *gofr.Context) (any, error) {
 	}
 
 	return stats, nil
+}
+
+// Prefixes handles GET /api/internal/prefixes?status=&page= — the
+// brand-prefix review queue (default status PENDING), oldest first.
+func (h *AdminHandler) Prefixes(ctx *gofr.Context) (any, error) {
+	page, err := pageParam(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	prefixes, err := h.admin.Prefixes(ctx, ctx.Param("status"), page)
+	if err != nil {
+		return nil, err
+	}
+
+	return prefixes, nil
+}
+
+// ApprovePrefix handles POST /api/internal/prefixes/{id}/approve.
+func (h *AdminHandler) ApprovePrefix(ctx *gofr.Context) (any, error) {
+	id, err := pathID(ctx, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := h.admin.ApprovePrefix(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+type prefixDecisionRequest struct {
+	Reason string `json:"reason"`
+}
+
+// RejectPrefix handles POST /api/internal/prefixes/{id}/reject {reason}.
+func (h *AdminHandler) RejectPrefix(ctx *gofr.Context) (any, error) {
+	return h.prefixDecision(ctx, h.admin.RejectPrefix)
+}
+
+// RevokePrefix handles POST /api/internal/prefixes/{id}/revoke {reason}.
+func (h *AdminHandler) RevokePrefix(ctx *gofr.Context) (any, error) {
+	return h.prefixDecision(ctx, h.admin.RevokePrefix)
+}
+
+// prefixDecision binds the required {reason} body of reject/revoke (the
+// service answers 422 for a blank reason).
+func (h *AdminHandler) prefixDecision(ctx *gofr.Context,
+	decide func(*gofr.Context, int64, string) (*models.AdminBrandPrefix, error)) (any, error) {
+	id, err := pathID(ctx, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	var req prefixDecisionRequest
+	if err := ctx.Bind(&req); err != nil {
+		return nil, gofrHTTP.ErrorInvalidParam{Params: []string{"body"}}
+	}
+
+	p, err := decide(ctx, id, req.Reason)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+// ReleasePrefix handles POST /api/internal/prefixes/{id}/release — deletes a
+// REVOKED prefix so its value is claimable again.
+func (h *AdminHandler) ReleasePrefix(ctx *gofr.Context) (any, error) {
+	id, err := pathID(ctx, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err := h.admin.ReleasePrefix(ctx, id); err != nil {
+		return nil, err
+	}
+
+	return map[string]bool{"released": true}, nil
 }
 
 // pageParam parses ?page= (default 1; anything non-positive or non-numeric

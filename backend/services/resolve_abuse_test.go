@@ -28,7 +28,7 @@ func TestResolveService_DisabledLinkIs410NoClick(t *testing.T) {
 	// GetByCode only — no visit counter, no click row, no geo, no rules.
 	m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(disabledLink(9, "abc1234"), nil)
 
-	_, err := svc.Resolve(ctx, "abc1234", "", visitor.Env{IP: "9.9.9.9"})
+	_, err := svc.Resolve(ctx, "", "abc1234", "", visitor.Env{IP: "9.9.9.9"})
 
 	require.Error(t, err)
 
@@ -49,12 +49,12 @@ func TestResolveService_GuessThrottle(t *testing.T) {
 	m.links.EXPECT().GetByCode(gomock.Any(), gomock.Any()).Return(nil, nil).Times(3)
 
 	for range 3 {
-		_, err := svc.Resolve(ctx, "nope", "", env)
+		_, err := svc.Resolve(ctx, "", "nope", "", env)
 		assertStatus(t, err, http.StatusNotFound)
 	}
 
 	// Fourth attempt never reaches the store: 429 during cooldown.
-	_, err := svc.Resolve(ctx, "whatever", "", env)
+	_, err := svc.Resolve(ctx, "", "whatever", "", env)
 	assertStatus(t, err, http.StatusTooManyRequests)
 
 	// A different IP is unaffected (valid code resolves normally).
@@ -63,7 +63,7 @@ func TestResolveService_GuessThrottle(t *testing.T) {
 	m.links.EXPECT().RecordVisit(gomock.Any(), int64(9)).Return(nil)
 	m.clicks.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(nil)
 
-	_, err = svc.Resolve(ctx, "abc1234", "", visitor.Env{IP: "6.6.6.6"})
+	_, err = svc.Resolve(ctx, "", "abc1234", "", visitor.Env{IP: "6.6.6.6"})
 	require.NoError(t, err)
 }
 
@@ -81,7 +81,7 @@ func TestResolveService_SuccessfulResolvesNeverCountAsMisses(t *testing.T) {
 	m.clicks.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(nil).Times(5)
 
 	for range 5 {
-		_, err := svc.Resolve(ctx, "abc1234", "", env)
+		_, err := svc.Resolve(ctx, "", "abc1234", "", env)
 		require.NoError(t, err)
 	}
 }
@@ -95,7 +95,7 @@ func TestResolveService_PreviewByCode(t *testing.T) {
 		m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").
 			Return(publicLink(9, "abc1234", "https://x.co/page"), nil)
 
-		got, err := svc.PreviewByCode(ctx, "abc1234", visitor.Env{IP: "1.2.3.4"})
+		got, err := svc.PreviewByCode(ctx, "", "abc1234", visitor.Env{IP: "1.2.3.4"})
 
 		require.NoError(t, err)
 		assert.Equal(t, "abc1234", got.Code)
@@ -108,7 +108,7 @@ func TestResolveService_PreviewByCode(t *testing.T) {
 
 		m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(disabledLink(9, "abc1234"), nil)
 
-		got, err := svc.PreviewByCode(ctx, "abc1234", visitor.Env{})
+		got, err := svc.PreviewByCode(ctx, "", "abc1234", visitor.Env{})
 
 		require.NoError(t, err)
 		assert.True(t, got.Disabled)
@@ -123,11 +123,11 @@ func TestResolveService_PreviewByCode(t *testing.T) {
 		m.links.EXPECT().GetByCode(gomock.Any(), gomock.Any()).Return(nil, nil).Times(2)
 
 		for range 2 {
-			_, err := svc.PreviewByCode(ctx, "nope", env)
+			_, err := svc.PreviewByCode(ctx, "", "nope", env)
 			assertStatus(t, err, http.StatusNotFound)
 		}
 
-		_, err := svc.PreviewByCode(ctx, "nope", env)
+		_, err := svc.PreviewByCode(ctx, "", "nope", env)
 		assertStatus(t, err, http.StatusTooManyRequests)
 	})
 
@@ -145,7 +145,7 @@ func TestResolveService_PreviewByCode(t *testing.T) {
 		ownLink.OrgID = 7
 		m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(ownLink, nil)
 
-		got, err := svc.PreviewByCode(ctx, "abc1234", env)
+		got, err := svc.PreviewByCode(ctx, "", "abc1234", env)
 		require.NoError(t, err)
 		assert.Equal(t, "https://x.co", got.DestinationURL)
 
@@ -154,7 +154,7 @@ func TestResolveService_PreviewByCode(t *testing.T) {
 		otherLink.OrgID = 8
 		m.links.EXPECT().GetByCode(gomock.Any(), "zzz9999").Return(otherLink, nil)
 
-		_, err = svc.PreviewByCode(ctx, "zzz9999", env)
+		_, err = svc.PreviewByCode(ctx, "", "zzz9999", env)
 		assertStatus(t, err, http.StatusNotFound)
 	})
 }

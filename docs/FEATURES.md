@@ -105,6 +105,45 @@ Sections:
 - TLS for custom domains is a deployment/ingress concern, not application logic
   (DEPLOYMENT.md).
 
+### 1.7 Brand prefixes (sender-scoped paths on the shared domain)
+
+- An org can serve its links as `https://<SHORT_DOMAIN>/<prefix>/<code>` — a path-scoped
+  entry point for orgs without their own domain. The motivating case is India's DLT rules
+  for commercial SMS: a URL must be whitelisted against the sender's header, and a shared
+  shortener domain can only be whitelisted as a prefix one sender exclusively controls.
+- **Format**: 3–20 characters from `[A-Za-z0-9]`. Stored and displayed exactly as entered
+  (DLT matching can be case-sensitive); uniqueness and resolution are case-insensitive, so
+  `ACMEIN` and `acmein` can never belong to different orgs. Subject to the full reserved-word
+  set (§10.5).
+- **Request** (org OWNER): prefix plus sender evidence — registry (`IN-DLT` in v1), DLT
+  Principal Entity ID, the registered header, and the entity's legal name. The prefix must
+  equal the header (case-insensitive), so review is a match check, not a naming judgment.
+  An org may hold several prefixes (one per header). New requests start **PENDING**.
+- **Approval**: an instance operator reviews PENDING requests through the instance admin
+  API (§9) — approve, or reject with a reason. The reviewer may ask the org for a screenshot
+  of the DLT portal header page out of band; v1 stores no uploaded documents. Org OWNERs are
+  emailed the outcome. `BRAND_PREFIX_AUTO_APPROVE=true` (default false) approves on request,
+  for self-hosted deployments where the operator is the only org.
+- **Revocation**: the operator can revoke an APPROVED prefix with a reason. A revoked prefix
+  stops resolving immediately; the org's links keep working at `/{code}`. The value stays
+  held by that org (not claimable by anyone else) until the operator releases it. Every
+  approve/reject/revoke/release is logged with operator reason.
+- **Serving**: `GET /{prefix}/{code}` resolves only when the prefix is APPROVED and the code
+  belongs to the prefix's org; anything else is 404 (counted by the guess-throttle, §10.4).
+  The bare `GET /{prefix}` is 404. `GET /{code}` keeps resolving every link (INV-5's single
+  namespace is unchanged); a prefix adds a scoped entry point, exactly like a custom domain
+  does (§1.6). Prefixes are served on `SHORT_DOMAIN` only — on a custom domain
+  `/{prefix}/{code}` is 404. Preview (`/{prefix}/{code}+`) works with the same scoping.
+- **No ambiguity with codes**: while a prefix is PENDING, APPROVED or held after
+  revocation, no alias may equal it case-insensitively (409), and a generated code that
+  does is redrawn. A request whose prefix equals any existing short code (any org,
+  including the requester's own) is refused — the org can rename its own alias first.
+- **Primary & display**: one APPROVED prefix per org can be marked primary; short URLs
+  everywhere (create responses, lists, detail, QR codes) are then built as
+  `https://<SHORT_DOMAIN>/<prefix>/<code>`. A primary custom domain (§1.6) takes precedence.
+  Every link of the org resolves under every APPROVED prefix of that org.
+- **Roles**: OWNER for request/delete/set-primary; every member can view prefixes and status.
+
 ---
 
 ## 2. Redirection & link resolution
@@ -116,6 +155,8 @@ Sections:
   Resolution never requires login. Unknown codes return 404.
 - Resolution is **host-aware** (§1.6): on the deployment's short domain every link resolves;
   on a VERIFIED custom domain only the owning org's links resolve; any other host is 404.
+- `GET /{prefix}/{code}` resolves under an APPROVED brand prefix, scoped to its org (§1.7).
+- Each click records its entry point — root, brand prefix, or custom domain.
 - A JSON resolution API (`GET /api/v1/resolve`) exists for programmatic use, with an optional
   campaign tag attached to the click.
 - Every resolution records a click (§4) — via either endpoint (INV-4).
@@ -400,7 +441,9 @@ a product domain is expected to have: **auth-shaped** (`login`, `signin`,
 short domain; an org with a **verified custom domain** is only bound by the
 functional/infra category (and config additions) — it owns its own
 namespace. The check applies to custom aliases *and* to generated codes
-(a random draw that spells a reserved word is redrawn).
+(a random draw that spells a reserved word is redrawn). Brand prefixes
+(§1.7) live on the shared domain and always face the full set; active and
+held prefixes are in turn blocked as aliases and generated codes.
 
 ---
 
@@ -459,3 +502,6 @@ Tracked as future work, separate from the shipped feature set above:
   application log).
 - Automated per-domain TLS for custom domains in hosted deployments (the app-level custom
   domain feature shipped in §1.6; certificate automation remains an operator concern).
+- Brand prefixes (§1.7): evidence types beyond DLT (e.g. a verified email domain) for
+  non-SMS brands; per-link choice of display prefix; document upload for sender proof;
+  review queue in the admin UI.

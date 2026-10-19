@@ -55,7 +55,9 @@ func (h *ResolveHandler) Root(ctx *gofr.Context) (any, error) {
 	return response.Redirect{URL: h.websiteURL}, nil
 }
 
-// Redirect handles GET /{code}: 302 to the resolved destination. The
+// Redirect handles GET /{code} and GET /{prefix}/{code} (brand prefix,
+// FEATURES.md §1.7 — the route without a prefix leaves the path param empty):
+// 302 to the resolved destination. The
 // Cache-Control: no-store header (a cached redirect kills click tracking) is
 // set by the CacheControl middleware.
 //
@@ -64,7 +66,7 @@ func (h *ResolveHandler) Root(ctx *gofr.Context) (any, error) {
 // (gofr renders a File response with the error's status code, so the pair
 // below is "HTML body, status 410".)
 func (h *ResolveHandler) Redirect(ctx *gofr.Context) (any, error) {
-	res, err := h.resolver.Resolve(ctx, ctx.PathParam("code"), "", visitor.FromContext(ctx))
+	res, err := h.resolver.Resolve(ctx, ctx.PathParam("prefix"), ctx.PathParam("code"), "", visitor.FromContext(ctx))
 
 	var disabled *services.DisabledLinkError
 	if errors.As(err, &disabled) {
@@ -100,7 +102,7 @@ func (h *ResolveHandler) Redirect(ctx *gofr.Context) (any, error) {
 // scoping as resolution. Browser-facing, so every outcome is HTML: unknown
 // codes render a 404 page, disabled links the 410 warning page.
 func (h *ResolveHandler) Preview(ctx *gofr.Context) (any, error) {
-	preview, err := h.resolver.PreviewByCode(ctx, ctx.PathParam("code"), visitor.FromContext(ctx))
+	preview, err := h.resolver.PreviewByCode(ctx, ctx.PathParam("prefix"), ctx.PathParam("code"), visitor.FromContext(ctx))
 
 	var apiErr apierrors.Error
 	if errors.As(err, &apiErr) && apiErr.StatusCode() == http.StatusNotFound {
@@ -140,8 +142,9 @@ func (h *ResolveHandler) disabledPage() response.File {
 	}
 }
 
-// Resolve handles GET /api/v1/resolve?code=&tag= — JSON resolution. tag is an
-// optional campaign tag recorded on the click (FEATURES.md §5.3).
+// Resolve handles GET /api/v1/resolve?code=&tag=&prefix= — JSON resolution.
+// tag is an optional campaign tag recorded on the click (FEATURES.md §5.3);
+// prefix scopes the lookup to a brand prefix exactly like /{prefix}/{code}.
 //
 // The endpoint is public, but an explicitly supplied X-API-Key must be valid:
 // a wrong or disabled key fails loudly with 401 rather than silently
@@ -160,5 +163,5 @@ func (h *ResolveHandler) Resolve(ctx *gofr.Context) (any, error) {
 		return nil, gofrHTTP.ErrorMissingParam{Params: []string{"code"}}
 	}
 
-	return h.resolver.Resolve(ctx, code, ctx.Param("tag"), visitor.FromContext(ctx))
+	return h.resolver.Resolve(ctx, ctx.Param("prefix"), code, ctx.Param("tag"), visitor.FromContext(ctx))
 }

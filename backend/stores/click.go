@@ -17,8 +17,8 @@ func NewClickStore() *ClickStore { return &ClickStore{} }
 // FEATURES.md INV-2). ts defaults to CURRENT_TIMESTAMP in the schema.
 const insertClick = `INSERT INTO clicks (org_id, link_id, utm_source, utm_medium, utm_campaign,
 	device_type, mobile_os, browser, referrer, ip, city, country, region,
-	is_deeplink, target_matched, custom_tag_id)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	is_deeplink, target_matched, custom_tag_id, entry_point, brand_prefix_id)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 // Insert records one click. Empty string attributes are stored as NULL.
 func (*ClickStore) Insert(ctx *gofr.Context, c *models.Click) error {
@@ -28,9 +28,19 @@ func (*ClickStore) Insert(ctx *gofr.Context, c *models.Click) error {
 		nullable(c.DeviceType), nullable(c.MobileOS), nullable(c.Browser),
 		nullable(c.Referrer), nullable(c.IP), nullable(c.City),
 		nullable(c.Country), nullable(c.Region),
-		c.IsDeeplink, c.TargetMatched, nullable(c.CustomTagID))
+		c.IsDeeplink, c.TargetMatched, nullable(c.CustomTagID),
+		nullable(c.EntryPoint), nullableID(c.BrandPrefixID))
 
 	return err
+}
+
+// nullableID maps a zero id to SQL NULL.
+func nullableID(id int64) any {
+	if id == 0 {
+		return nil
+	}
+
+	return id
 }
 
 // nullable maps "" to SQL NULL.

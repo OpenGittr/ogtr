@@ -49,14 +49,14 @@ func (*DisabledLinkError) StatusCode() int { return http.StatusGone }
 // before launch; the redirect handler renders a neutral "not active yet" page.
 type ScheduledLinkError struct{ Code string }
 
-func (*ScheduledLinkError) Error() string  { return "this link is not active yet" }
+func (*ScheduledLinkError) Error() string   { return "this link is not active yet" }
 func (*ScheduledLinkError) StatusCode() int { return http.StatusNotFound }
 
 // ExpiredLinkError is returned when a link's expiry time has passed: it was
 // live and no longer is. 410 Gone, like a disabled link — the code existed.
 type ExpiredLinkError struct{ Code string }
 
-func (*ExpiredLinkError) Error() string  { return "this link has expired" }
+func (*ExpiredLinkError) Error() string   { return "this link has expired" }
 func (*ExpiredLinkError) StatusCode() int { return http.StatusGone }
 
 // Preview is what GET /{code}+ shows a cautious visitor: the destination as
@@ -72,12 +72,15 @@ type Preview struct {
 // (ARCHITECTURE.md §4 "Resolution & redirect"). domains + shortDomain make
 // it host-aware: on the deployment's own SHORT_DOMAIN (and local-dev
 // loopback hosts) every org's code resolves (the global namespace), while a
-// VERIFIED custom domain resolves only its owning org's links.
+// VERIFIED custom domain resolves only its owning org's links. prefixes
+// adds the path-scoped equivalent on SHORT_DOMAIN: /<prefix>/<code> resolves
+// only the APPROVED prefix's org's links (FEATURES.md §1.7).
 type ResolveService struct {
 	links        LinkStore
 	clicks       ClickStore
 	rules        RuleStore
 	domains      DomainStore
+	prefixes     BrandPrefixStore
 	geo          LocationResolver
 	throttle     *ratelimit.GuessThrottle
 	selfSource   string
@@ -92,13 +95,22 @@ type ResolveService struct {
 // (nil = disabled) is the anti-enumeration 404 guess throttle;
 // abuseContact rides on disabled-link 410s.
 func NewResolveService(links LinkStore, clicks ClickStore, rules RuleStore, domains DomainStore,
-	geo LocationResolver, throttle *ratelimit.GuessThrottle,
+	prefixes BrandPrefixStore, geo LocationResolver, throttle *ratelimit.GuessThrottle,
 	selfSource, shortDomain, abuseContact string) *ResolveService {
 	return &ResolveService{
-		links: links, clicks: clicks, rules: rules, domains: domains,
+		links: links, clicks: clicks, rules: rules, domains: domains, prefixes: prefixes,
 		geo: geo, throttle: throttle,
 		selfSource: selfSource, shortDomain: shortDomain, abuseContact: abuseContact,
 	}
+}
+
+// resolveScope is where a resolution entered: the org it is scoped to (0 =
+// the global namespace), the click's entry point, and the brand prefix it
+// came through (0 = none).
+type resolveScope struct {
+	orgID      int64
+	entryPoint string
+	prefixID   int64
 }
 
 // Resolve runs the pipeline: lookup → visitor location (GeoIP) → UTM tagging →
@@ -111,8 +123,10 @@ func NewResolveService(links LinkStore, clicks ClickStore, rules RuleStore, doma
 // rule overrides that again — both flags are recorded on the click. Deep-link
 // and rule URLs are served exactly as configured (no UTM auto-tagging); the
 // click still records the UTM set of the default destination.
-func (s *ResolveService) Resolve(ctx *gofr.Context, code, tag string, env visitor.Env) (*Resolution, error) {
-	link, err := s.lookup(ctx, code, env)
+//
+// prefix is the brand prefix of a /<prefix>/<code> request ("" for /<code>).
+func (s *ResolveService) Resolve(ctx *gofr.Context, prefix, code, tag string, env visitor.Env) (*Resolution, error) {
+	link, scope, err := s.lookup(ctx, prefix, code, env)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +189,8 @@ func (s *ResolveService) Resolve(ctx *gofr.Context, code, tag string, env visito
 		IsDeeplink:    isDeeplink,
 		TargetMatched: targetMatched,
 		CustomTagID:   tag,
+		EntryPoint:    scope.entryPoint,
+		BrandPrefixID: scope.prefixID,
 	}
 	if err := s.clicks.Insert(ctx, &click); err != nil {
 		ctx.Logger.Errorf("recording click for link %d failed: %v", link.ID, err)
@@ -183,42 +199,78 @@ func (s *ResolveService) Resolve(ctx *gofr.Context, code, tag string, env visito
 	return &Resolution{Code: link.Code, URL: outURL}, nil
 }
 
-// lookup is the shared host-scoped code lookup with the anti-enumeration
-// guess throttle: an IP past its unknown-code budget gets 429 for a
-// cooldown, and every unknown-code (or out-of-scope) 404 counts as a miss.
-// Successful lookups never count.
-func (s *ResolveService) lookup(ctx *gofr.Context, code string, env visitor.Env) (*models.Link, error) {
+// lookup is the shared host- and prefix-scoped code lookup with the
+// anti-enumeration guess throttle: an IP past its unknown-code budget gets
+// 429 for a cooldown, and every unknown-code (or out-of-scope) 404 counts as
+// a miss. Successful lookups never count.
+func (s *ResolveService) lookup(ctx *gofr.Context, prefix, code string, env visitor.Env) (*models.Link, resolveScope, error) {
 	if s.throttle != nil && s.throttle.Blocked(env.IP) {
-		return nil, apierrors.TooManyRequests("too many requests — try again shortly")
+		return nil, resolveScope{}, apierrors.TooManyRequests("too many requests — try again shortly")
 	}
 
-	scopeOrg, err := s.hostScope(ctx, env.Host)
+	scope, err := s.scope(ctx, prefix, env.Host)
 	if err != nil {
 		s.recordMissIf404(err, env.IP)
 
-		return nil, err
+		return nil, resolveScope{}, err
 	}
 
 	link, err := s.links.GetByCode(ctx, code)
 	if err != nil {
-		return nil, err
+		return nil, resolveScope{}, err
 	}
 
-	// A custom domain resolves ONLY its owning org's links; another org's
-	// code answers the same 404 as an unknown code (existence stays hidden).
-	if link == nil || (scopeOrg != 0 && link.OrgID != scopeOrg) {
+	// A custom domain or brand prefix resolves ONLY its owning org's links;
+	// another org's code answers the same 404 as an unknown code (existence
+	// stays hidden).
+	if link == nil || (scope.orgID != 0 && link.OrgID != scope.orgID) {
 		if s.throttle != nil {
 			s.throttle.RecordMiss(env.IP)
 		}
 
-		return nil, apierrors.NotFound("short link not found")
+		return nil, resolveScope{}, apierrors.NotFound("short link not found")
 	}
 
-	return link, nil
+	return link, scope, nil
 }
 
-// recordMissIf404 counts host-scope 404s (unknown hostname, unverified
-// domain) as guess misses too — they are the same enumeration surface.
+// scope classifies a resolution: the request Host first (hostScope), then
+// the brand prefix, if any. A prefix is served on the deployment's own
+// domain only — on a custom domain /<prefix>/<code> is a 404 — and only
+// while APPROVED; unknown, PENDING, REJECTED and REVOKED prefixes are all
+// the same 404.
+func (s *ResolveService) scope(ctx *gofr.Context, prefix, host string) (resolveScope, error) {
+	scopeOrg, err := s.hostScope(ctx, host)
+	if err != nil {
+		return resolveScope{}, err
+	}
+
+	if prefix == "" {
+		if scopeOrg != 0 {
+			return resolveScope{orgID: scopeOrg, entryPoint: models.EntryPointDomain}, nil
+		}
+
+		return resolveScope{entryPoint: models.EntryPointRoot}, nil
+	}
+
+	if scopeOrg != 0 {
+		return resolveScope{}, apierrors.NotFound("short link not found")
+	}
+
+	p, err := s.prefixes.GetByPrefix(ctx, prefix)
+	if err != nil {
+		return resolveScope{}, err
+	}
+
+	if p == nil || p.Status != models.BrandPrefixStatusApproved {
+		return resolveScope{}, apierrors.NotFound("short link not found")
+	}
+
+	return resolveScope{orgID: p.OrgID, entryPoint: models.EntryPointPrefix, prefixID: p.ID}, nil
+}
+
+// recordMissIf404 counts scope 404s (unknown hostname, unverified domain,
+// unknown or unapproved prefix) as guess misses too — they are the same enumeration surface.
 func (s *ResolveService) recordMissIf404(err error, ip string) {
 	if s.throttle == nil {
 		return
@@ -235,8 +287,8 @@ func (s *ResolveService) recordMissIf404(err error, ip string) {
 // NO click is recorded, no counters move and the redirect pipeline (deep
 // links, rules, UTM) never runs — the visitor is inspecting, not visiting.
 // Disabled links still preview (with Disabled set) so the page can explain.
-func (s *ResolveService) PreviewByCode(ctx *gofr.Context, code string, env visitor.Env) (*Preview, error) {
-	link, err := s.lookup(ctx, code, env)
+func (s *ResolveService) PreviewByCode(ctx *gofr.Context, prefix, code string, env visitor.Env) (*Preview, error) {
+	link, _, err := s.lookup(ctx, prefix, code, env)
 	if err != nil {
 		return nil, err
 	}

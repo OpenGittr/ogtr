@@ -13,6 +13,8 @@
 import type {
   ApiKey,
   AuthProvidersInfo,
+  BrandPrefix,
+  BrandPrefixInput,
   AuthResult,
   CreatedApiKey,
   CreateOrgResult,
@@ -34,6 +36,19 @@ import type {
 } from "./types";
 
 const BASE: string = import.meta.env.VITE_API_URL ?? "";
+
+/**
+ * The short-link host (VITE_API_URL is the short-domain origin; same-origin
+ * deployments fall back to the page's host). Used to preview URLs like
+ * <host>/<prefix>/<code> before any link exists under them.
+ */
+export function shortHost(): string {
+  try {
+    return BASE ? new URL(BASE).host : window.location.host;
+  } catch {
+    return window.location.host;
+  }
+}
 
 const TOKENS_KEY = "ogtr.tokens";
 
@@ -343,6 +358,19 @@ export const endpoints = {
 
   /** Removes a domain (OWNER). Gofr DELETEs respond 204, no body. */
   deleteDomain: (id: number) => api<null>(`/api/v1/org/domains/${id}`, { method: "DELETE" }),
+
+  prefixes: async () => (await api<BrandPrefix[] | null>("/api/v1/org/prefixes")) ?? [],
+
+  /** Files a brand-prefix request (OWNER) — PENDING until the operator approves. */
+  createPrefix: (input: BrandPrefixInput) =>
+    api<BrandPrefix>("/api/v1/org/prefixes", { method: "POST", body: input }),
+
+  /** Makes this the org's display prefix (OWNER; APPROVED only). */
+  setPrimaryPrefix: (id: number) =>
+    api<BrandPrefix>(`/api/v1/org/prefixes/${id}/primary`, { method: "PUT" }),
+
+  /** Withdraws a request or removes a prefix (OWNER); a revoked prefix is 409. */
+  deletePrefix: (id: number) => api<null>(`/api/v1/org/prefixes/${id}`, { method: "DELETE" }),
 
   shorten: (input: ShortenInput) =>
     api<ShortURL>("/api/v1/links", { method: "POST", body: input }),

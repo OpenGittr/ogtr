@@ -1071,6 +1071,165 @@ func (mr *MockDomainStoreMockRecorder) SetVerified(ctx, orgID, id any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetVerified", reflect.TypeOf((*MockDomainStore)(nil).SetVerified), ctx, orgID, id)
 }
 
+// MockBrandPrefixStore is a mock of BrandPrefixStore interface.
+type MockBrandPrefixStore struct {
+	ctrl     *gomock.Controller
+	recorder *MockBrandPrefixStoreMockRecorder
+	isgomock struct{}
+}
+
+// MockBrandPrefixStoreMockRecorder is the mock recorder for MockBrandPrefixStore.
+type MockBrandPrefixStoreMockRecorder struct {
+	mock *MockBrandPrefixStore
+}
+
+// NewMockBrandPrefixStore creates a new mock instance.
+func NewMockBrandPrefixStore(ctrl *gomock.Controller) *MockBrandPrefixStore {
+	mock := &MockBrandPrefixStore{ctrl: ctrl}
+	mock.recorder = &MockBrandPrefixStoreMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockBrandPrefixStore) EXPECT() *MockBrandPrefixStoreMockRecorder {
+	return m.recorder
+}
+
+// CountHeldByOrg mocks base method.
+func (m *MockBrandPrefixStore) CountHeldByOrg(ctx *gofr.Context, orgID int64) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountHeldByOrg", ctx, orgID)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountHeldByOrg indicates an expected call of CountHeldByOrg.
+func (mr *MockBrandPrefixStoreMockRecorder) CountHeldByOrg(ctx, orgID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountHeldByOrg", reflect.TypeOf((*MockBrandPrefixStore)(nil).CountHeldByOrg), ctx, orgID)
+}
+
+// Create mocks base method.
+func (m *MockBrandPrefixStore) Create(ctx *gofr.Context, p *models.BrandPrefix) (*models.BrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, p)
+	ret0, _ := ret[0].(*models.BrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockBrandPrefixStoreMockRecorder) Create(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockBrandPrefixStore)(nil).Create), ctx, p)
+}
+
+// Delete mocks base method.
+func (m *MockBrandPrefixStore) Delete(ctx *gofr.Context, orgID, id int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, orgID, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockBrandPrefixStoreMockRecorder) Delete(ctx, orgID, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockBrandPrefixStore)(nil).Delete), ctx, orgID, id)
+}
+
+// GetByID mocks base method.
+func (m *MockBrandPrefixStore) GetByID(ctx *gofr.Context, orgID, id int64) (*models.BrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", ctx, orgID, id)
+	ret0, _ := ret[0].(*models.BrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockBrandPrefixStoreMockRecorder) GetByID(ctx, orgID, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockBrandPrefixStore)(nil).GetByID), ctx, orgID, id)
+}
+
+// GetByPrefix mocks base method.
+func (m *MockBrandPrefixStore) GetByPrefix(ctx *gofr.Context, prefix string) (*models.BrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByPrefix", ctx, prefix)
+	ret0, _ := ret[0].(*models.BrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByPrefix indicates an expected call of GetByPrefix.
+func (mr *MockBrandPrefixStoreMockRecorder) GetByPrefix(ctx, prefix any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByPrefix", reflect.TypeOf((*MockBrandPrefixStore)(nil).GetByPrefix), ctx, prefix)
+}
+
+// IsHeld mocks base method.
+func (m *MockBrandPrefixStore) IsHeld(ctx *gofr.Context, value string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsHeld", ctx, value)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsHeld indicates an expected call of IsHeld.
+func (mr *MockBrandPrefixStoreMockRecorder) IsHeld(ctx, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsHeld", reflect.TypeOf((*MockBrandPrefixStore)(nil).IsHeld), ctx, value)
+}
+
+// ListByOrg mocks base method.
+func (m *MockBrandPrefixStore) ListByOrg(ctx *gofr.Context, orgID int64) ([]models.BrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByOrg", ctx, orgID)
+	ret0, _ := ret[0].([]models.BrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListByOrg indicates an expected call of ListByOrg.
+func (mr *MockBrandPrefixStoreMockRecorder) ListByOrg(ctx, orgID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByOrg", reflect.TypeOf((*MockBrandPrefixStore)(nil).ListByOrg), ctx, orgID)
+}
+
+// PrimaryApprovedPrefix mocks base method.
+func (m *MockBrandPrefixStore) PrimaryApprovedPrefix(ctx *gofr.Context, orgID int64) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrimaryApprovedPrefix", ctx, orgID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PrimaryApprovedPrefix indicates an expected call of PrimaryApprovedPrefix.
+func (mr *MockBrandPrefixStoreMockRecorder) PrimaryApprovedPrefix(ctx, orgID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrimaryApprovedPrefix", reflect.TypeOf((*MockBrandPrefixStore)(nil).PrimaryApprovedPrefix), ctx, orgID)
+}
+
+// SetPrimary mocks base method.
+func (m *MockBrandPrefixStore) SetPrimary(ctx *gofr.Context, orgID, id int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetPrimary", ctx, orgID, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetPrimary indicates an expected call of SetPrimary.
+func (mr *MockBrandPrefixStoreMockRecorder) SetPrimary(ctx, orgID, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPrimary", reflect.TypeOf((*MockBrandPrefixStore)(nil).SetPrimary), ctx, orgID, id)
+}
+
 // MockDNSResolver is a mock of DNSResolver interface.
 type MockDNSResolver struct {
 	ctrl     *gomock.Controller
@@ -1625,6 +1784,21 @@ func (mr *MockAdminStoreMockRecorder) CountOrgs(ctx, query any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountOrgs", reflect.TypeOf((*MockAdminStore)(nil).CountOrgs), ctx, query)
 }
 
+// CountPrefixes mocks base method.
+func (m *MockAdminStore) CountPrefixes(ctx *gofr.Context, status string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountPrefixes", ctx, status)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountPrefixes indicates an expected call of CountPrefixes.
+func (mr *MockAdminStoreMockRecorder) CountPrefixes(ctx, status any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountPrefixes", reflect.TypeOf((*MockAdminStore)(nil).CountPrefixes), ctx, status)
+}
+
 // CountReports mocks base method.
 func (m *MockAdminStore) CountReports(ctx *gofr.Context) (int64, error) {
 	m.ctrl.T.Helper()
@@ -1655,6 +1829,21 @@ func (mr *MockAdminStoreMockRecorder) CountUsers(ctx, query any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountUsers", reflect.TypeOf((*MockAdminStore)(nil).CountUsers), ctx, query)
 }
 
+// DecidePrefix mocks base method.
+func (m *MockAdminStore) DecidePrefix(ctx *gofr.Context, id int64, from, to string, reason *string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DecidePrefix", ctx, id, from, to, reason)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DecidePrefix indicates an expected call of DecidePrefix.
+func (mr *MockAdminStoreMockRecorder) DecidePrefix(ctx, id, from, to, reason any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecidePrefix", reflect.TypeOf((*MockAdminStore)(nil).DecidePrefix), ctx, id, from, to, reason)
+}
+
 // GetLink mocks base method.
 func (m *MockAdminStore) GetLink(ctx *gofr.Context, id int64) (*models.AdminLinkDetail, error) {
 	m.ctrl.T.Helper()
@@ -1668,6 +1857,21 @@ func (m *MockAdminStore) GetLink(ctx *gofr.Context, id int64) (*models.AdminLink
 func (mr *MockAdminStoreMockRecorder) GetLink(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLink", reflect.TypeOf((*MockAdminStore)(nil).GetLink), ctx, id)
+}
+
+// GetPrefix mocks base method.
+func (m *MockAdminStore) GetPrefix(ctx *gofr.Context, id int64) (*models.AdminBrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPrefix", ctx, id)
+	ret0, _ := ret[0].(*models.AdminBrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPrefix indicates an expected call of GetPrefix.
+func (mr *MockAdminStoreMockRecorder) GetPrefix(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPrefix", reflect.TypeOf((*MockAdminStore)(nil).GetPrefix), ctx, id)
 }
 
 // LinksCreatedPerDay mocks base method.
@@ -1698,6 +1902,21 @@ func (m *MockAdminStore) ListOrgs(ctx *gofr.Context, query string, limit, offset
 func (mr *MockAdminStoreMockRecorder) ListOrgs(ctx, query, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOrgs", reflect.TypeOf((*MockAdminStore)(nil).ListOrgs), ctx, query, limit, offset)
+}
+
+// ListPrefixes mocks base method.
+func (m *MockAdminStore) ListPrefixes(ctx *gofr.Context, status string, limit, offset int) ([]models.AdminBrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPrefixes", ctx, status, limit, offset)
+	ret0, _ := ret[0].([]models.AdminBrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListPrefixes indicates an expected call of ListPrefixes.
+func (mr *MockAdminStoreMockRecorder) ListPrefixes(ctx, status, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPrefixes", reflect.TypeOf((*MockAdminStore)(nil).ListPrefixes), ctx, status, limit, offset)
 }
 
 // ListReports mocks base method.
@@ -1788,6 +2007,21 @@ func (m *MockAdminStore) OrgUsers(ctx *gofr.Context, orgID int64) ([]models.Admi
 func (mr *MockAdminStoreMockRecorder) OrgUsers(ctx, orgID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OrgUsers", reflect.TypeOf((*MockAdminStore)(nil).OrgUsers), ctx, orgID)
+}
+
+// ReleasePrefix mocks base method.
+func (m *MockAdminStore) ReleasePrefix(ctx *gofr.Context, id int64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReleasePrefix", ctx, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReleasePrefix indicates an expected call of ReleasePrefix.
+func (mr *MockAdminStoreMockRecorder) ReleasePrefix(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleasePrefix", reflect.TypeOf((*MockAdminStore)(nil).ReleasePrefix), ctx, id)
 }
 
 // SignupsPerDay mocks base method.

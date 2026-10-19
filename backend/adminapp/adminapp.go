@@ -22,6 +22,7 @@ package adminapp
 import (
 	"gofr.dev/pkg/gofr"
 
+	"github.com/opengittr/ogtr/backend/email"
 	"github.com/opengittr/ogtr/backend/handlers"
 	"github.com/opengittr/ogtr/backend/services"
 	"github.com/opengittr/ogtr/backend/stores"
@@ -49,7 +50,15 @@ func setup(app *gofr.App, o *options) {
 
 	// adminSvc reuses linkStore's SetStatusByID — operator disable/enable
 	// shares the re-scan's abuse-status machinery exactly (public server).
-	adminSvc := services.NewAdminService(stores.NewAdminStore(), stores.NewLinkStore())
+	//
+	// The mailer (same SMTP_*/MAIL_FROM/APP_URL config as the public server;
+	// a no-op when unset) tells org owners about brand-prefix decisions.
+	mailer := email.New(
+		app.Config.Get("SMTP_HOST"), app.Config.Get("SMTP_PORT"),
+		app.Config.Get("SMTP_USERNAME"), app.Config.Get("SMTP_PASSWORD"),
+		app.Config.Get("MAIL_FROM"), app.Config.Get("APP_URL"))
+
+	adminSvc := services.NewAdminService(stores.NewAdminStore(), stores.NewLinkStore(), mailer)
 	adminH := handlers.NewAdminHandler(adminSvc)
 
 	// The gate covers everything under AdminPathPrefix — core routes below
@@ -69,6 +78,14 @@ func setup(app *gofr.App, o *options) {
 	app.POST("/api/internal/links/{id}/disable", adminH.DisableLink)
 	app.POST("/api/internal/links/{id}/enable", adminH.EnableLink)
 	app.GET("/api/internal/stats/daily", adminH.DailyStats)
+
+	// Brand-prefix review (FEATURES.md §1.7): the queue and the operator's
+	// decisions. Conditional on current status — a stale decision is 409.
+	app.GET("/api/internal/prefixes", adminH.Prefixes)
+	app.POST("/api/internal/prefixes/{id}/approve", adminH.ApprovePrefix)
+	app.POST("/api/internal/prefixes/{id}/reject", adminH.RejectPrefix)
+	app.POST("/api/internal/prefixes/{id}/revoke", adminH.RevokePrefix)
+	app.POST("/api/internal/prefixes/{id}/release", adminH.ReleasePrefix)
 
 	// Deployment-registered routes come last, after every core route.
 	if o.routes != nil {

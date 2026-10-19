@@ -118,6 +118,7 @@ Every backend env var (ARCHITECTURE.md §7) and where it lives:
 | `BLOCKLIST_REFRESH_INTERVAL` | configmap | Go duration, default `6h`; see §6 |
 | `WEBRISK_API_KEY` | **secret** (`webrisk-api-key`) | Google Web Risk lookups; empty = layer off; see §6 |
 | `RESERVED_ALIASES` | configmap | extra reserved words, comma-separated; see §6 |
+| `BRAND_PREFIX_AUTO_APPROVE` | configmap | `true` approves brand-prefix requests without operator review (single-operator self-hosting); default `false`; see §6.6 |
 | `SHORTENER_DOMAINS` | configmap | extra shortener hosts refused as destinations; see §6 |
 | `RESCAN_INTERVAL` | configmap | Go duration, default `24h` (≥24h runs daily); see §6 |
 | `LINK_CREATE_RATE` | configmap | creates+edits per principal per minute, default `30`; see §6 |
@@ -340,6 +341,31 @@ domain** are exempt from categories 1 and 3 on the grounds that they own
 their namespace; category 2 and your additions always apply. Generated
 codes are checked too — a random draw that spells a reserved word is
 redrawn.
+
+### 6.6 Brand prefixes (operator review)
+
+Orgs can request a path on the shared domain, `https://<SHORT_DOMAIN>/<prefix>/<code>`
+(FEATURES.md §1.7), for SMS senders who must whitelist a URL prefix with
+India's DLT. Because a prefix lives on *your* domain, a squatted one
+(`/sbi/…`) is a phishing tool that can get the whole domain blocklisted, so
+requests wait for an operator. Review them on the `ogtr-internal` admin
+service:
+
+```sh
+H="X-Admin-Token: $ADMIN_API_TOKEN"; A=http://ogtr-internal.<ns>.svc.cluster.local
+curl -s "$A/api/internal/prefixes" -H "$H"                      # PENDING queue
+curl -s -XPOST "$A/api/internal/prefixes/<id>/approve" -H "$H"
+curl -s -XPOST "$A/api/internal/prefixes/<id>/reject" -H "$H" -d '{"reason":"…"}'
+curl -s -XPOST "$A/api/internal/prefixes/<id>/revoke" -H "$H" -d '{"reason":"…"}'
+curl -s -XPOST "$A/api/internal/prefixes/<id>/release" -H "$H"  # free a revoked value
+```
+
+Check that the prefix equals the org's DLT header and the entity name
+matches the org; ask for a screenshot of the DLT portal's header page when
+in doubt. A revoked prefix stops resolving at once (the org's links keep
+working at `/<code>`) and stays held until released. If the admin service
+has `SMTP_*`/`MAIL_FROM`/`APP_URL` set, org owners are emailed each
+decision. A single-operator install can set `BRAND_PREFIX_AUTO_APPROVE=true`.
 
 ## 7. First boot
 

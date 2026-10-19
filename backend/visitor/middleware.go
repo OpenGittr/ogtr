@@ -8,24 +8,25 @@ import (
 	gofrHTTP "gofr.dev/pkg/gofr/http"
 )
 
-// redirectPathRe matches the public redirect route: one root path segment in
-// the short-code/alias charset. The charset excludes dots, so gofr's own
+// redirectPathRe matches the public redirect routes: one root path segment
+// in the short-code/alias charset, optionally behind a brand-prefix segment
+// (/{prefix}/{code}, alphanumeric). Neither charset has dots, so gofr's own
 // single-segment routes (/favicon.ico) and dotted well-known paths never
 // match (ARCHITECTURE.md §3).
-var redirectPathRe = regexp.MustCompile(`^/[a-zA-Z0-9_-]+$`)
+var redirectPathRe = regexp.MustCompile(`^(/[a-zA-Z0-9]+)?/[a-zA-Z0-9_-]+$`)
 
-// previewPathRe matches the public preview route GET /{code}+ — the
-// redirect charset with a trailing literal plus.
-var previewPathRe = regexp.MustCompile(`^/[a-zA-Z0-9_-]+\+$`)
+// previewPathRe matches the public preview routes GET /{code}+ and
+// GET /{prefix}/{code}+ — the redirect shapes with a trailing literal plus.
+var previewPathRe = regexp.MustCompile(`^(/[a-zA-Z0-9]+)?/[a-zA-Z0-9_-]+\+$`)
 
-// IsRedirectPath reports whether the request path is the public
-// GET /{code} redirect route.
+// IsRedirectPath reports whether the request path is a public
+// GET /{code} or GET /{prefix}/{code} redirect route.
 func IsRedirectPath(path string) bool {
 	return redirectPathRe.MatchString(path)
 }
 
-// IsPreviewPath reports whether the request path is the public
-// GET /{code}+ preview route.
+// IsPreviewPath reports whether the request path is a public
+// GET /{code}+ or GET /{prefix}/{code}+ preview route.
 func IsPreviewPath(path string) bool {
 	return previewPathRe.MatchString(path)
 }

@@ -6,6 +6,7 @@ import (
 	"gofr.dev/pkg/gofr"
 
 	"github.com/opengittr/ogtr/backend/apierrors"
+	"github.com/opengittr/ogtr/backend/email"
 	"github.com/opengittr/ogtr/backend/models"
 )
 
@@ -58,15 +59,17 @@ var adminNowFn = time.Now
 // DELIBERATELY cross-org — the sanctioned exception to INV-6; the
 // compensating control is the ADMIN_API_TOKEN gate in front of every route.
 type AdminService struct {
-	store AdminStore
-	links LinkStatusStore
+	store  AdminStore
+	links  LinkStatusStore
+	mailer *email.Sender
 }
 
 // NewAdminService wires an AdminService. links is the same store the
 // re-scan's disable path uses, so operator disable/enable shares that status
-// machinery exactly.
-func NewAdminService(store AdminStore, links LinkStatusStore) *AdminService {
-	return &AdminService{store: store, links: links}
+// machinery exactly. mailer (nil or unconfigured = no mail) tells org owners
+// about brand-prefix decisions.
+func NewAdminService(store AdminStore, links LinkStatusStore, mailer *email.Sender) *AdminService {
+	return &AdminService{store: store, links: links, mailer: mailer}
 }
 
 // pageOffset converts a 1-based page into the SQL offset (pages below 1

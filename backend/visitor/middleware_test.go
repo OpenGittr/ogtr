@@ -21,7 +21,10 @@ func TestIsRedirectPath(t *testing.T) {
 		{"/api/v1/links", false},
 		{"/favicon.ico", false},
 		{"/.well-known/health", false},
-		{"/abc/def", false},
+		{"/ACMEIN/abc1234", true},   // brand prefix /{prefix}/{code}
+		{"/acme_in/abc1234", false}, // prefixes are alphanumeric only
+		{"/.well-known/alive", false},
+		{"/abc/def/ghi", false},
 	}
 
 	for _, tc := range tests {
@@ -39,6 +42,8 @@ func TestMiddleware(t *testing.T) {
 		wantEnv bool
 	}{
 		{"redirect path gets an env", http.MethodGet, "/abc1234", true},
+		{"prefixed redirect path gets an env", http.MethodGet, "/ACMEIN/abc1234", true},
+		{"prefixed preview path gets an env", http.MethodGet, "/ACMEIN/abc1234+", true},
 		{"resolve path gets an env", http.MethodGet, "/api/v1/resolve?code=x", true},
 		{"api path gets none", http.MethodGet, "/api/v1/links", false},
 		{"POST gets none", http.MethodPost, "/abc1234", false},

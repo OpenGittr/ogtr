@@ -65,12 +65,14 @@ type LinkPage struct {
 // destination editing. members backs the org-OWNER permission check on
 // destination edits (checked against the DB role, never the token claim);
 // domains backs the primary-custom-domain short-URL display (FEATURES.md
-// §1.6).
+// §1.6); prefixes backs the primary-brand-prefix display and keeps codes off
+// held prefixes (§1.7).
 type LinkService struct {
 	links        LinkStore
 	rules        RuleStore
 	members      MemberStore
 	domains      DomainStore
+	prefixes     BrandPrefixStore
 	scanner      URLScanner
 	policy       limits.Policy
 	reserved     *ReservedAliases
@@ -81,21 +83,21 @@ type LinkService struct {
 
 // NewLinkService wires a LinkService. shortScheme/shortDomain come from
 // SHORT_SCHEME / SHORT_DOMAIN config and build every short URL — unless the
-// org has a primary VERIFIED custom domain, which then becomes the display
-// base. scanner vets every destination (creation + edits); policy bounds link
+// org has a primary VERIFIED custom domain or a primary APPROVED brand
+// prefix, which then becomes the display base. scanner vets every destination (creation + edits); policy bounds link
 // creation (wire limits.Unlimited{} unless the deployment supplies its own);
 // reserved is the alias blacklist (nil means the built-in categories only);
 // abuseContact (ABUSE_CONTACT config, may be empty) is appended to
 // flagged-destination errors so a false positive has an escalation path.
 func NewLinkService(links LinkStore, rules RuleStore, members MemberStore, domains DomainStore,
-	urlScanner URLScanner, policy limits.Policy, reserved *ReservedAliases,
+	prefixes BrandPrefixStore, urlScanner URLScanner, policy limits.Policy, reserved *ReservedAliases,
 	shortScheme, shortDomain, abuseContact string) *LinkService {
 	if reserved == nil {
 		reserved = NewReservedAliases(nil)
 	}
 
 	return &LinkService{
-		links: links, rules: rules, members: members, domains: domains,
+		links: links, rules: rules, members: members, domains: domains, prefixes: prefixes,
 		scanner: urlScanner, policy: policy, reserved: reserved,
 		shortScheme: shortScheme, shortDomain: shortDomain, abuseContact: abuseContact,
 	}
@@ -351,10 +353,28 @@ func normalizeRuleInputs(inputs []RuleInput) ([]models.Rule, error) {
 // existingShortURL handles already-short detection (FEATURES.md §1.1): the
 // submitted URL points at SHORT_DOMAIN, so return the link it refers to.
 func (s *LinkService) existingShortURL(ctx *gofr.Context, orgID, viewerID int64, u *url.URL) (*models.Link, error) {
-	code := strings.Trim(u.Path, "/")
+	path := strings.Trim(u.Path, "/")
+
+	// /<code>, or /<prefix>/<code> under one of the org's own APPROVED
+	// brand prefixes (FEATURES.md §1.7).
+	prefix, code, scoped := strings.Cut(path, "/")
+	if !scoped {
+		prefix, code = "", path
+	}
 
 	if code == "" || strings.Contains(code, "/") {
 		return nil, apierrors.Unprocessable("url points at this short domain but is not a short link")
+	}
+
+	if scoped {
+		p, err := s.prefixes.GetByPrefix(ctx, prefix)
+		if err != nil {
+			return nil, err
+		}
+
+		if p == nil || p.OrgID != orgID || p.Status != models.BrandPrefixStatusApproved {
+			return nil, apierrors.Unprocessable("url points at this short domain but does not match one of your links")
+		}
 	}
 
 	link, err := s.links.GetByCode(ctx, code)
@@ -671,9 +691,10 @@ func (*LinkService) withShortURL(link *models.Link, base string) *models.Link {
 	return link
 }
 
-// displayBase returns the origin the org's short URLs are displayed (and
+// displayBase returns the base the org's short URLs are displayed (and
 // QR-encoded) under: https://<primary verified custom domain> when the org
-// has one, otherwise SHORT_SCHEME://SHORT_DOMAIN. Custom domains are always
+// has one, else SHORT_SCHEME://SHORT_DOMAIN/<primary approved brand prefix>
+// when it has one, otherwise SHORT_SCHEME://SHORT_DOMAIN. Custom domains are always
 // https — TLS for them is an operator/ingress concern (DEPLOYMENT.md). A
 // lookup failure logs and falls back to the deployment domain: display must
 // never block link management. Regardless of the display base, the
@@ -692,7 +713,21 @@ func (s *LinkService) displayBase(ctx *gofr.Context, orgID int64) string {
 		return "https://" + host
 	}
 
-	return s.shortScheme + "://" + s.shortDomain
+	base := s.shortScheme + "://" + s.shortDomain
+
+	prefix, err := s.prefixes.PrimaryApprovedPrefix(ctx, orgID)
+	if err != nil {
+		ctx.Logger.Errorf("primary prefix lookup for org %d failed (falling back to %s): %v",
+			orgID, s.shortDomain, err)
+
+		return base
+	}
+
+	if prefix != "" {
+		return base + "/" + prefix
+	}
+
+	return base
 }
 
 // randomCodeFn generates candidate short codes; a package variable so the
@@ -712,6 +747,18 @@ func (s *LinkService) uniqueCode(ctx *gofr.Context) (string, error) {
 
 		if s.reserved.IsReserved(code, false) {
 			ctx.Logger.Infof("generated code %q is a reserved word, retrying", code)
+
+			continue
+		}
+
+		// A code equal to a held brand prefix would make /<prefix> ambiguous.
+		held, err := s.prefixes.IsHeld(ctx, code)
+		if err != nil {
+			return "", err
+		}
+
+		if held {
+			ctx.Logger.Infof("generated code %q equals a brand prefix, retrying", code)
 
 			continue
 		}
@@ -837,6 +884,17 @@ func (s *LinkService) validateAlias(ctx *gofr.Context, orgID int64, alias string
 
 	if s.reserved.IsReserved(alias, customScope) {
 		return apierrors.Unprocessable("this alias is reserved")
+	}
+
+	// No alias may equal a held brand prefix (any org, case-insensitive):
+	// /<prefix> must never resolve a link (FEATURES.md §1.7).
+	held, err := s.prefixes.IsHeld(ctx, alias)
+	if err != nil {
+		return err
+	}
+
+	if held {
+		return apierrors.Conflict("this alias is already in use")
 	}
 
 	return nil

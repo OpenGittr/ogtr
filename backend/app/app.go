@@ -112,6 +112,7 @@ func setup(app *gofr.App, o *options) error {
 	statsStore := stores.NewStatsStore()
 	apiKeyStore := stores.NewAPIKeyStore()
 	domainStore := stores.NewDomainStore()
+	prefixStore := stores.NewBrandPrefixStore()
 	reportStore := stores.NewAbuseReportStore()
 	usageStore := usage.NewStore()
 
@@ -133,10 +134,10 @@ func setup(app *gofr.App, o *options) error {
 
 	authSvc := services.NewAuthService(providers, tokens, userStore, orgStore, memberStore, inviteStore, policy, mailer)
 	orgSvc := services.NewOrgService(orgStore, memberStore, inviteStore, userStore, policy, mailer)
-	linkSvc := services.NewLinkService(linkStore, ruleStore, memberStore, domainStore, urlScanner, policy, reserved,
-		shortScheme, shortDomain, abuseContact)
+	linkSvc := services.NewLinkService(linkStore, ruleStore, memberStore, domainStore, prefixStore, urlScanner,
+		policy, reserved, shortScheme, shortDomain, abuseContact)
 	ruleSvc := services.NewRuleService(ruleStore, linkStore)
-	resolveSvc := services.NewResolveService(linkStore, clickStore, ruleStore, domainStore, locator,
+	resolveSvc := services.NewResolveService(linkStore, clickStore, ruleStore, domainStore, prefixStore, locator,
 		guessThrottle, app.Config.GetOrDefault("UTM_SELF_SOURCE", shortDomain), shortDomain, abuseContact)
 	reportSvc := services.NewReportService(linkStore, reportStore, reportLimiter)
 	rescanSvc := services.NewRescanService(linkStore, urlScanner)
@@ -145,6 +146,10 @@ func setup(app *gofr.App, o *options) error {
 	// net.DefaultResolver is the production DNSResolver; tests substitute a
 	// mock behind the same interface — the verification code is identical.
 	domainSvc := services.NewDomainService(domainStore, memberStore, net.DefaultResolver, policy, shortDomain)
+	// Brand prefixes (FEATURES.md §1.7): requests wait for operator approval
+	// unless BRAND_PREFIX_AUTO_APPROVE=true (single-operator self-hosting).
+	prefixSvc := services.NewBrandPrefixService(prefixStore, linkStore, memberStore, reserved,
+		strings.EqualFold(app.Config.Get("BRAND_PREFIX_AUTO_APPROVE"), "true"))
 
 	authH := handlers.NewAuthHandler(authSvc, providerNames,
 		app.Config.Get("GOOGLE_CLIENT_ID"), app.Config.Get("MICROSOFT_CLIENT_ID"))
@@ -157,6 +162,7 @@ func setup(app *gofr.App, o *options) error {
 	statsH := handlers.NewStatsHandler(statsSvc)
 	apiKeyH := handlers.NewAPIKeyHandler(apiKeySvc)
 	domainH := handlers.NewDomainHandler(domainSvc)
+	prefixH := handlers.NewBrandPrefixHandler(prefixSvc)
 
 	app.UseMiddleware(auth.Middleware(tokens, o.exemptPaths...),
 		visitor.Middleware(), handlers.CacheControl())
@@ -190,6 +196,14 @@ func setup(app *gofr.App, o *options) error {
 	app.POST("/api/v1/org/domains/{id}/verify", domainH.Verify)
 	app.PUT("/api/v1/org/domains/{id}/primary", domainH.SetPrimary)
 	app.DELETE("/api/v1/org/domains/{id}", domainH.Delete)
+
+	// Brand prefixes (§4 "Brand prefixes"). Org-scoped via the token;
+	// mutations are OWNER-only, members may list. Approval is an operator
+	// action on the instance admin service.
+	app.POST("/api/v1/org/prefixes", prefixH.Create)
+	app.GET("/api/v1/org/prefixes", prefixH.List)
+	app.PUT("/api/v1/org/prefixes/{id}/primary", prefixH.SetPrimary)
+	app.DELETE("/api/v1/org/prefixes/{id}", prefixH.Delete)
 
 	// Links (§4). Org always inferred from the token, never the path.
 	app.POST("/api/v1/links", linkH.Shorten)
@@ -244,6 +258,14 @@ func setup(app *gofr.App, o *options) error {
 	app.GET("/api/v1/resolve", resolveH.Resolve)
 	app.GET("/{code:[a-zA-Z0-9_-]+}", resolveH.Redirect)
 	app.GET("/{code:[a-zA-Z0-9_-]+}+", resolveH.Preview)
+
+	// Brand-prefixed resolution: /{prefix}/{code} (+ preview), scoped to the
+	// APPROVED prefix's org. The prefix charset has no dots, so
+	// /.well-known/* is never shadowed; /api/<x> matches but "api" is
+	// reserved and can never be a prefix (and the auth middleware answers
+	// /api/* first).
+	app.GET("/{prefix:[a-zA-Z0-9]+}/{code:[a-zA-Z0-9_-]+}", resolveH.Redirect)
+	app.GET("/{prefix:[a-zA-Z0-9]+}/{code:[a-zA-Z0-9_-]+}+", resolveH.Preview)
 
 	// Bare-domain bounce: GET / (no code) 302s to WEBSITE_URL when that
 	// config is set; without it the root stays a 404, exactly as before.

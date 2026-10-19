@@ -21,7 +21,7 @@ func TestResolveHandler_Redirect_DisabledLinkRenders410Page(t *testing.T) {
 	svc := NewMockResolveService(ctrl)
 	h := NewResolveHandler(svc, NewMockAPIKeyService(ctrl), "", "sho.rt", "abuse@sho.rt")
 
-	svc.EXPECT().Resolve(gomock.Any(), "abc1234", "", gomock.Any()).
+	svc.EXPECT().Resolve(gomock.Any(), "", "abc1234", "", gomock.Any()).
 		Return(nil, &services.DisabledLinkError{Code: "abc1234", AbuseContact: "abuse@sho.rt"})
 
 	ctx := newTestCtx(t, http.MethodGet, "/abc1234", "", nil, map[string]string{"code": "abc1234"})
@@ -66,7 +66,7 @@ func TestResolveHandler_Preview(t *testing.T) {
 	t.Run("active link renders destination + report form", func(t *testing.T) {
 		h, svc := newHandler(t, "abuse@sho.rt")
 
-		svc.EXPECT().PreviewByCode(gomock.Any(), "abc1234", gomock.Any()).
+		svc.EXPECT().PreviewByCode(gomock.Any(), "", "abc1234", gomock.Any()).
 			Return(&services.Preview{Code: "abc1234", DestinationURL: "https://x.co/page?a=1"}, nil)
 
 		got, err := h.Preview(previewCtx(t))
@@ -87,7 +87,7 @@ func TestResolveHandler_Preview(t *testing.T) {
 	t.Run("without ABUSE_CONTACT the contact line is absent", func(t *testing.T) {
 		h, svc := newHandler(t, "")
 
-		svc.EXPECT().PreviewByCode(gomock.Any(), "abc1234", gomock.Any()).
+		svc.EXPECT().PreviewByCode(gomock.Any(), "", "abc1234", gomock.Any()).
 			Return(&services.Preview{Code: "abc1234", DestinationURL: "https://x.co"}, nil)
 
 		got, err := h.Preview(previewCtx(t))
@@ -99,7 +99,7 @@ func TestResolveHandler_Preview(t *testing.T) {
 	t.Run("disabled link renders the 410 page", func(t *testing.T) {
 		h, svc := newHandler(t, "")
 
-		svc.EXPECT().PreviewByCode(gomock.Any(), "abc1234", gomock.Any()).
+		svc.EXPECT().PreviewByCode(gomock.Any(), "", "abc1234", gomock.Any()).
 			Return(&services.Preview{Code: "abc1234", DestinationURL: "https://x.co", Disabled: true}, nil)
 
 		got, err := h.Preview(previewCtx(t))
@@ -117,7 +117,7 @@ func TestResolveHandler_Preview(t *testing.T) {
 	t.Run("unknown code renders an HTML 404", func(t *testing.T) {
 		h, svc := newHandler(t, "")
 
-		svc.EXPECT().PreviewByCode(gomock.Any(), "abc1234", gomock.Any()).
+		svc.EXPECT().PreviewByCode(gomock.Any(), "", "abc1234", gomock.Any()).
 			Return(nil, apierrors.NotFound("short link not found"))
 
 		got, err := h.Preview(previewCtx(t))
@@ -134,7 +134,7 @@ func TestResolveHandler_Preview(t *testing.T) {
 	t.Run("throttled preview passes the 429 through as JSON", func(t *testing.T) {
 		h, svc := newHandler(t, "")
 
-		svc.EXPECT().PreviewByCode(gomock.Any(), "abc1234", gomock.Any()).
+		svc.EXPECT().PreviewByCode(gomock.Any(), "", "abc1234", gomock.Any()).
 			Return(nil, apierrors.TooManyRequests("too many requests"))
 
 		got, err := h.Preview(previewCtx(t))

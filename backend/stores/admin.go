@@ -357,6 +357,111 @@ func (*AdminStore) ClicksPerDay(ctx *gofr.Context, since string) ([]models.DayCo
 	return dayCountQuery(ctx, clicksPerDayAdminQuery, since)
 }
 
+// Brand-prefix review (FEATURES.md §1.7): the operator's queue and
+// decisions, across orgs. Listing is oldest first — a review queue.
+const (
+	adminPrefixColumns = "p.id, p.org_id, p.prefix, p.status, p.is_primary, p.registry, p.entity_id, " +
+		"p.header, p.entity_name, p.decision_reason, p.decided_at, p.created_at, o.name"
+
+	listPrefixesQuery = "SELECT " + adminPrefixColumns + " FROM brand_prefixes p " +
+		"INNER JOIN orgs o ON o.id = p.org_id WHERE p.status = ? ORDER BY p.id LIMIT ? OFFSET ?"
+
+	countPrefixesQuery = "SELECT COUNT(id) FROM brand_prefixes WHERE status = ?"
+
+	adminPrefixQuery = "SELECT " + adminPrefixColumns + " FROM brand_prefixes p " +
+		"INNER JOIN orgs o ON o.id = p.org_id WHERE p.id = ?"
+
+	// A decision is conditional on the current status, so a stale or
+	// concurrent decision changes nothing. Every decision clears is_primary:
+	// approval starts non-primary and a revoked prefix must stop displaying.
+	decidePrefixQuery = "UPDATE brand_prefixes SET status = ?, decision_reason = ?, " +
+		"decided_at = CURRENT_TIMESTAMP, is_primary = 0 WHERE id = ? AND status = ?"
+
+	releasePrefixQuery = "DELETE FROM brand_prefixes WHERE id = ? AND status = ?"
+)
+
+// ListPrefixes returns one page of brand-prefix requests in the given
+// status, oldest first, each with its org name.
+func (*AdminStore) ListPrefixes(ctx *gofr.Context, status string, limit, offset int) ([]models.AdminBrandPrefix, error) {
+	rows, err := ctx.SQL.QueryContext(ctx, listPrefixesQuery, status, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	prefixes := []models.AdminBrandPrefix{}
+
+	for rows.Next() {
+		p, err := scanAdminPrefix(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		prefixes = append(prefixes, *p)
+	}
+
+	return prefixes, rows.Err()
+}
+
+// CountPrefixes counts brand-prefix requests in the given status.
+func (*AdminStore) CountPrefixes(ctx *gofr.Context, status string) (int64, error) {
+	var n int64
+
+	err := ctx.SQL.QueryRowContext(ctx, countPrefixesQuery, status).Scan(&n)
+
+	return n, err
+}
+
+// GetPrefix fetches one brand prefix by id (NOT org-scoped — the admin
+// exception); (nil, nil) when absent.
+func (*AdminStore) GetPrefix(ctx *gofr.Context, id int64) (*models.AdminBrandPrefix, error) {
+	p, err := scanAdminPrefix(ctx.SQL.QueryRowContext(ctx, adminPrefixQuery, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+
+	return p, err
+}
+
+// DecidePrefix moves a prefix from status `from` to `to`, recording the
+// operator's reason (nil for approval). Reports whether the row was in
+// `from` (false = stale or concurrent decision, nothing changed).
+func (*AdminStore) DecidePrefix(ctx *gofr.Context, id int64, from, to string, reason *string) (bool, error) {
+	res, err := ctx.SQL.ExecContext(ctx, decidePrefixQuery, to, reason, id, from)
+	if err != nil {
+		return false, err
+	}
+
+	affected, err := res.RowsAffected()
+
+	return affected == 1, err
+}
+
+// ReleasePrefix deletes a REVOKED prefix so its value is claimable again.
+// Reports whether a row was deleted.
+func (*AdminStore) ReleasePrefix(ctx *gofr.Context, id int64) (bool, error) {
+	res, err := ctx.SQL.ExecContext(ctx, releasePrefixQuery, id, models.BrandPrefixStatusRevoked)
+	if err != nil {
+		return false, err
+	}
+
+	affected, err := res.RowsAffected()
+
+	return affected == 1, err
+}
+
+func scanAdminPrefix(row rowScanner) (*models.AdminBrandPrefix, error) {
+	var p models.AdminBrandPrefix
+
+	err := row.Scan(&p.ID, &p.OrgID, &p.Prefix, &p.Status, &p.IsPrimary, &p.Registry, &p.EntityID,
+		&p.Header, &p.EntityName, &p.DecisionReason, &p.DecidedAt, &p.CreatedAt, &p.OrgName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &p, nil
+}
+
 // inQuery expands the %s IN-list hole of shape with one placeholder per id
 // and returns the query plus the id args.
 func inQuery(shape string, ids []int64) (string, []any) {

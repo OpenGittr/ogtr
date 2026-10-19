@@ -69,5 +69,18 @@ Each step is one action → one expected result.
     domain → 422 "this alias is reserved"; the same alias on an org with a VERIFIED custom
     domain → accepted; alias `api` → 422 for BOTH orgs (functional category binds everywhere);
     any word from `RESERVED_ALIASES` → 422 for both.
+35. **Brand prefix — request** — as an OWNER, Domains → Brand prefixes: submit a DLT header,
+    Principal Entity ID and entity name → the row shows "in review"; a header that is a reserved
+    word (`login`) → error; the same prefix again in any letter case (from any org) → 409.
+36. **Brand prefix — review & routing** — `POST ogtr-internal/api/internal/prefixes/<id>/approve`
+    → `SHORT/<PREFIX>/<own-org-code>` 302 (also with the prefix lower-cased); bare
+    `SHORT/<PREFIX>` → 404; `SHORT/<PREFIX>/<another-org's-code>` → 404;
+    `SHORT/<PREFIX>/<code>+` → preview page; `SHORT/<code>` still 302.
+37. **Brand prefix — primary display** — "Set primary" on the approved prefix → links list,
+    link detail and QR show `SHORT/<PREFIX>/<code>`; setting an alias equal to the prefix (any
+    case) → 409.
+38. **Brand prefix — revoke & release** — revoke with a reason → `SHORT/<PREFIX>/<code>` 404
+    while `SHORT/<code>` still 302, display reverts to `SHORT/<code>`, the reason shows on the
+    row, and the owner cannot remove it (409); `…/release` → the value can be requested again.
 
 Changes to this checklist should be agreed before editing (project convention).

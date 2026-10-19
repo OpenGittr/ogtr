@@ -80,7 +80,9 @@ link_edits     id, org_id, link_id, user_id, old_url, new_url, created_at
 
 clicks         id, org_id, link_id, ts, utm_source, utm_medium, utm_campaign,
                device_type, mobile_os, browser, browser_grade, referrer, ip, city,
-               country, region, is_deeplink, target_matched, custom_tag_id (nullable)
+               country, region, is_deeplink, target_matched, custom_tag_id (nullable),
+               entry_point (ROOT|PREFIX|DOMAIN; NULL on pre-prefix rows),
+               brand_prefix_id (nullable, no FK — a released prefix's row is deleted)
 
 api_keys       id, org_id, name, key_hash (SHA-256 hex, unique), key_hint,
                status (ENABLED|DISABLED), created_at, last_used_at
@@ -88,6 +90,11 @@ api_keys       id, org_id, name, key_hash (SHA-256 hex, unique), key_hint,
 domains        id, org_id, hostname (unique — lowercase, punycode-normalized),
                verification_token (random base62, 32 chars), status (PENDING|VERIFIED|DISABLED),
                verified_at (nullable), is_primary (tinyint, single primary per org), created_at
+
+brand_prefixes id, org_id, prefix (unique, case-insensitive collation — stored as entered),
+               status (PENDING|APPROVED|REJECTED|REVOKED), is_primary (single per org),
+               registry (IN-DLT), entity_id, header, entity_name, decision_reason (nullable),
+               decided_at (nullable), created_at   (§4 "Brand prefixes")
 
 abuse_reports  id, org_id, link_id, code, reason (≤140), reporter_contact (nullable),
                created_at   (public link reporting, §8 "URL scanning & abuse defenses";
@@ -120,6 +127,11 @@ Key schema decisions:
   `api`, `login`, `metrics`, `favicon.ico`, `robots.txt`, `.well-known`, plus anything starting
   with a dot. Keep the list in one Go slice; validation error is 422.
 - Alias conflicts → HTTP 409.
+- Collation note: `links.code` declares no collation, so it inherits the server default
+  (`utf8mb4_0900_ai_ci` on MySQL 8 — case-insensitive). Uniqueness and `GetByCode` are then
+  case-insensitive even though generated codes are base62. Brand prefixes (§4) rely on this
+  for the prefix ↔ code exclusion; changing the column to a binary collation must update
+  that check.
 
 ## 4. HTTP API
 
@@ -336,6 +348,84 @@ points at the deployment must not become a marketing redirect. The `SHORT_DOMAIN
 resolving **every** link regardless of custom domains — the code namespace stays global and
 deployment-wide (INV-5 unchanged); a custom domain only adds a scoped entry point and changes
 the *displayed* URL. `GET /api/v1/resolve` applies the same host scoping.
+
+### Brand prefixes
+
+Path-scoped entry points on `SHORT_DOMAIN` (FEATURES.md §1.7): `/<prefix>/<code>`, for
+senders (Indian DLT SMS) who must whitelist a URL prefix they exclusively control.
+
+```
+POST   /api/v1/org/prefixes               {prefix, registry, entity_id, header, entity_name}
+                                          → PENDING (APPROVED when BRAND_PREFIX_AUTO_APPROVE)
+GET    /api/v1/org/prefixes               list with status + decision_reason (any member)
+PUT    /api/v1/org/prefixes/{id}/primary  make this the org's primary (APPROVED only, else 422)
+DELETE /api/v1/org/prefixes/{id}          withdraw/remove; a REVOKED prefix is 409 (held
+                                          until an operator releases it)
+```
+
+Mutations are OWNER-only (role read from the DB), members may list — the custom-domain rules.
+The operator side lives on the instance admin service (below):
+
+```
+GET  /api/internal/prefixes?status=&page=   requests across orgs (25/page), oldest first,
+                                            with org name + evidence; default status=PENDING
+POST /api/internal/prefixes/{id}/approve    PENDING → APPROVED
+POST /api/internal/prefixes/{id}/reject     {reason} (required) PENDING → REJECTED
+POST /api/internal/prefixes/{id}/revoke     {reason} (required) APPROVED → REVOKED, primary cleared
+POST /api/internal/prefixes/{id}/release    REVOKED → row deleted; the value is claimable again
+```
+
+Design decisions:
+
+- **A prefix is a scope, like a custom domain.** Resolution gains one classification step
+  ahead of the code lookup: `GET /{prefix}/{code}` → the request Host must be a deployment
+  host (a custom domain answers 404) → the prefix must exist and be APPROVED → scope to its
+  org. From there it is the existing `lookup`: another org's code is the same 404 as an
+  unknown code, and every 404 on the way (unknown, PENDING, REVOKED prefix) counts as a
+  guess-throttle miss. `ResolveService.Resolve` / `PreviewByCode` take the (possibly empty)
+  prefix; `GET /api/v1/resolve` accepts an optional `&prefix=` with identical scoping. The
+  prefix store is not a policy or usage dependency — INV-7 is untouched.
+- **Routes**: `GET /{prefix:[a-zA-Z0-9]+}/{code:[a-zA-Z0-9_-]+}` and the same with a trailing
+  `+` for the preview. The prefix charset has no dots, so `/.well-known/*` stays unshadowed;
+  `/api/<x>` matches the pattern but `api` is reserved and can never be approved, and the
+  auth middleware answers `/api/*` first anyway. The visitor-env and Cache-Control
+  middlewares' path matchers extend to the two-segment shapes. Bare `/{prefix}` needs no
+  route: it hits the single-segment code route, and no code may equal a held prefix, so it
+  is an ordinary 404.
+- **Prefix ↔ code exclusion, both directions.** Request: the prefix must pass the full
+  reserved set (`IsReserved(prefix, false)`), the explicit-word filter, and must not equal
+  any existing code (`CodeExists`). Codes: `validateAlias` and `uniqueCode` refuse/redraw a
+  value equal to a *held* prefix (PENDING, APPROVED or REVOKED) — one indexed lookup on
+  `brand_prefixes.prefix`. All comparisons are case-insensitive: `brand_prefixes.prefix`
+  carries an explicit case-insensitive collation, and the code-side check relies on
+  `links.code`'s collation (currently the server default — see the note in §3).
+- **Evidence is validated, not verified.** `registry` must be `IN-DLT`; `entity_id` numeric;
+  `header` must equal the prefix case-insensitively; `entity_name` 2–255 chars. Nothing is
+  checked against DLT (no public API) — the operator's review is the check.
+- **State machine with conditional writes**: every transition is
+  `UPDATE … WHERE id = ? AND status = ?`; zero rows affected is a 409 (stale or concurrent
+  decision). Revoke clears `is_primary` in the same statement. Primary swap mirrors the
+  domain swap (one transaction, SET requires APPROVED). A REJECTED row does not hold its
+  value: a new request for it (any org) deletes the rejected row and inserts in one
+  transaction. Requests are capped at 20 non-rejected prefixes per org (abuse guard, not a
+  plan limit — the `limits.Policy` interface is deliberately not extended).
+- **Display**: `displayBase` precedence is primary VERIFIED custom domain →
+  `SHORT_SCHEME://SHORT_DOMAIN/<primary APPROVED prefix>` → `SHORT_SCHEME://SHORT_DOMAIN`;
+  `withShortURL` appends `/<code>` unchanged, so create/list/detail/QR all follow. Same
+  failure rule: a lookup error falls back and logs. Already-short detection
+  (`existingShortURL`) accepts the two-segment `/<prefix>/<code>` shape when the prefix is
+  the org's own APPROVED prefix.
+- **Clicks** record `entry_point` (ROOT/PREFIX/DOMAIN) and `brand_prefix_id` from the scope
+  step — added to the fixed `insertClick` column list (INV-2).
+- **Operator decisions are cross-org** and so live in `stores/admin.go` with the other
+  INV-6-exception queries. Each is logged with operator reason (audit-light, like link
+  disable). The admin service gains the mailer (same `SMTP_*`/`MAIL_FROM`/`APP_URL`
+  config, config-gated no-op when unset) to email the org's OWNERs on approve/reject/revoke.
+- **Migration**: one new timestamped file — `CREATE TABLE IF NOT EXISTS brand_prefixes` plus
+  the two `clicks` columns as per-column guarded ALTERs (the `link_gating` pattern) — and the
+  same DDL folded into the initial schema for fresh installs.
+- **No admin UI yet**: the review queue is driven by curl or an operations console against
+  `/api/internal/prefixes` (FEATURES.md §12).
 
 ### API keys
 
@@ -626,6 +716,7 @@ RESERVED_ALIASES                  extra reserved short-code words (comma-separat
 SHORTENER_DOMAINS                 extra shortener hosts refused as destinations
 RESCAN_INTERVAL                   destination re-scan interval (default 24h; ≥24h = daily)
 LINK_CREATE_RATE                  creates+edits per principal per minute (default 30)
+BRAND_PREFIX_AUTO_APPROVE         true = prefix requests skip operator review (default false)
 ```
 
 Instance-admin service (`backend/admin`, config in `backend/admin/configs/`):
@@ -635,6 +726,7 @@ HTTP_PORT / METRICS_PORT          5820 / 5821 locally (the +20 secondary-backend
 DB_*                              the SAME database as the public server (no migrations here)
 ADMIN_API_TOKEN                   admin token (§4 "Instance admin service"); unset (default)
                                   = every /api/internal/* endpoint 404s (the service is dark)
+SMTP_* / MAIL_FROM / APP_URL      optional; brand-prefix decision emails (unset: no mail)
 ```
 
 Each service's `configs/.local.env` is gitignored; ship `configs/.sample.env`. No real

@@ -135,9 +135,9 @@ type Link struct {
 	// PasswordHash is the bcrypt hash gating the link; nil means no password.
 	// It NEVER serializes — the API exposes only the HasPassword boolean, set
 	// from this field on every read (see stores.scanLinkRow).
-	PasswordHash *string `json:"-"`
-	HasPassword  bool    `json:"has_password"`
-	Visits       int64   `json:"visits"`
+	PasswordHash *string    `json:"-"`
+	HasPassword  bool       `json:"has_password"`
+	Visits       int64      `json:"visits"`
 	LastVisitAt  *time.Time `json:"last_visit_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	ShortURL     string     `json:"short_url"`
@@ -224,6 +224,45 @@ type Domain struct {
 	TXTRecordValue    string     `json:"txt_record_value"`
 }
 
+// Brand-prefix status values (FEATURES.md §1.7). Only APPROVED serves
+// redirects; PENDING, APPROVED and REVOKED hold the value (no other org may
+// claim it, no code may equal it); REJECTED holds nothing.
+const (
+	BrandPrefixStatusPending  = "PENDING"
+	BrandPrefixStatusApproved = "APPROVED"
+	BrandPrefixStatusRejected = "REJECTED"
+	BrandPrefixStatusRevoked  = "REVOKED"
+)
+
+// BrandPrefixRegistryDLT is the only sender registry accepted in v1: India's
+// DLT (commercial SMS) header registration.
+const BrandPrefixRegistryDLT = "IN-DLT"
+
+// BrandPrefix is a row in the brand_prefixes table: an org's path-scoped entry
+// point on the shared short domain (https://<SHORT_DOMAIN>/<prefix>/<code>).
+// Prefix is stored as entered; uniqueness is case-insensitive (collation).
+type BrandPrefix struct {
+	ID             int64      `json:"id"`
+	OrgID          int64      `json:"org_id"`
+	Prefix         string     `json:"prefix"`
+	Status         string     `json:"status"`
+	IsPrimary      bool       `json:"is_primary"`
+	Registry       string     `json:"registry"`
+	EntityID       string     `json:"entity_id"`
+	Header         string     `json:"header"`
+	EntityName     string     `json:"entity_name"`
+	DecisionReason *string    `json:"decision_reason"`
+	DecidedAt      *time.Time `json:"decided_at"`
+	CreatedAt      time.Time  `json:"created_at"`
+}
+
+// Click entry points: how a resolution reached the link (recorded per click).
+const (
+	EntryPointRoot   = "ROOT"
+	EntryPointPrefix = "PREFIX"
+	EntryPointDomain = "DOMAIN"
+)
+
 // Rule condition operators (FEATURES.md §3.1).
 const (
 	ConditionIs    = "is"
@@ -271,4 +310,6 @@ type Click struct {
 	IsDeeplink    bool
 	TargetMatched bool
 	CustomTagID   string
+	EntryPoint    string
+	BrandPrefixID int64 // 0 = not resolved through a brand prefix
 }

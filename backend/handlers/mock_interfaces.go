@@ -508,33 +508,33 @@ func (m *MockResolveService) EXPECT() *MockResolveServiceMockRecorder {
 }
 
 // PreviewByCode mocks base method.
-func (m *MockResolveService) PreviewByCode(ctx *gofr.Context, code string, env visitor.Env) (*services.Preview, error) {
+func (m *MockResolveService) PreviewByCode(ctx *gofr.Context, prefix, code string, env visitor.Env) (*services.Preview, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PreviewByCode", ctx, code, env)
+	ret := m.ctrl.Call(m, "PreviewByCode", ctx, prefix, code, env)
 	ret0, _ := ret[0].(*services.Preview)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PreviewByCode indicates an expected call of PreviewByCode.
-func (mr *MockResolveServiceMockRecorder) PreviewByCode(ctx, code, env any) *gomock.Call {
+func (mr *MockResolveServiceMockRecorder) PreviewByCode(ctx, prefix, code, env any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreviewByCode", reflect.TypeOf((*MockResolveService)(nil).PreviewByCode), ctx, code, env)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreviewByCode", reflect.TypeOf((*MockResolveService)(nil).PreviewByCode), ctx, prefix, code, env)
 }
 
 // Resolve mocks base method.
-func (m *MockResolveService) Resolve(ctx *gofr.Context, code, tag string, env visitor.Env) (*services.Resolution, error) {
+func (m *MockResolveService) Resolve(ctx *gofr.Context, prefix, code, tag string, env visitor.Env) (*services.Resolution, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Resolve", ctx, code, tag, env)
+	ret := m.ctrl.Call(m, "Resolve", ctx, prefix, code, tag, env)
 	ret0, _ := ret[0].(*services.Resolution)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Resolve indicates an expected call of Resolve.
-func (mr *MockResolveServiceMockRecorder) Resolve(ctx, code, tag, env any) *gomock.Call {
+func (mr *MockResolveServiceMockRecorder) Resolve(ctx, prefix, code, tag, env any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Resolve", reflect.TypeOf((*MockResolveService)(nil).Resolve), ctx, code, tag, env)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Resolve", reflect.TypeOf((*MockResolveService)(nil).Resolve), ctx, prefix, code, tag, env)
 }
 
 // MockReportService is a mock of ReportService interface.
@@ -684,6 +684,21 @@ func (m *MockAdminService) EXPECT() *MockAdminServiceMockRecorder {
 	return m.recorder
 }
 
+// ApprovePrefix mocks base method.
+func (m *MockAdminService) ApprovePrefix(ctx *gofr.Context, id int64) (*models.AdminBrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApprovePrefix", ctx, id)
+	ret0, _ := ret[0].(*models.AdminBrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ApprovePrefix indicates an expected call of ApprovePrefix.
+func (mr *MockAdminServiceMockRecorder) ApprovePrefix(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApprovePrefix", reflect.TypeOf((*MockAdminService)(nil).ApprovePrefix), ctx, id)
+}
+
 // DailyStats mocks base method.
 func (m *MockAdminService) DailyStats(ctx *gofr.Context, days int) (*services.AdminDailyStats, error) {
 	m.ctrl.T.Helper()
@@ -774,6 +789,50 @@ func (mr *MockAdminServiceMockRecorder) Orgs(ctx, query, page any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Orgs", reflect.TypeOf((*MockAdminService)(nil).Orgs), ctx, query, page)
 }
 
+// Prefixes mocks base method.
+func (m *MockAdminService) Prefixes(ctx *gofr.Context, status string, page int) (*services.AdminPrefixesPage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Prefixes", ctx, status, page)
+	ret0, _ := ret[0].(*services.AdminPrefixesPage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Prefixes indicates an expected call of Prefixes.
+func (mr *MockAdminServiceMockRecorder) Prefixes(ctx, status, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Prefixes", reflect.TypeOf((*MockAdminService)(nil).Prefixes), ctx, status, page)
+}
+
+// RejectPrefix mocks base method.
+func (m *MockAdminService) RejectPrefix(ctx *gofr.Context, id int64, reason string) (*models.AdminBrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RejectPrefix", ctx, id, reason)
+	ret0, _ := ret[0].(*models.AdminBrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RejectPrefix indicates an expected call of RejectPrefix.
+func (mr *MockAdminServiceMockRecorder) RejectPrefix(ctx, id, reason any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RejectPrefix", reflect.TypeOf((*MockAdminService)(nil).RejectPrefix), ctx, id, reason)
+}
+
+// ReleasePrefix mocks base method.
+func (m *MockAdminService) ReleasePrefix(ctx *gofr.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReleasePrefix", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReleasePrefix indicates an expected call of ReleasePrefix.
+func (mr *MockAdminServiceMockRecorder) ReleasePrefix(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleasePrefix", reflect.TypeOf((*MockAdminService)(nil).ReleasePrefix), ctx, id)
+}
+
 // Reports mocks base method.
 func (m *MockAdminService) Reports(ctx *gofr.Context, page int) (*services.AdminReportsPage, error) {
 	m.ctrl.T.Helper()
@@ -789,6 +848,21 @@ func (mr *MockAdminServiceMockRecorder) Reports(ctx, page any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reports", reflect.TypeOf((*MockAdminService)(nil).Reports), ctx, page)
 }
 
+// RevokePrefix mocks base method.
+func (m *MockAdminService) RevokePrefix(ctx *gofr.Context, id int64, reason string) (*models.AdminBrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevokePrefix", ctx, id, reason)
+	ret0, _ := ret[0].(*models.AdminBrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RevokePrefix indicates an expected call of RevokePrefix.
+func (mr *MockAdminServiceMockRecorder) RevokePrefix(ctx, id, reason any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokePrefix", reflect.TypeOf((*MockAdminService)(nil).RevokePrefix), ctx, id, reason)
+}
+
 // Users mocks base method.
 func (m *MockAdminService) Users(ctx *gofr.Context, query string, page int) (*services.AdminUsersPage, error) {
 	m.ctrl.T.Helper()
@@ -802,6 +876,89 @@ func (m *MockAdminService) Users(ctx *gofr.Context, query string, page int) (*se
 func (mr *MockAdminServiceMockRecorder) Users(ctx, query, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Users", reflect.TypeOf((*MockAdminService)(nil).Users), ctx, query, page)
+}
+
+// MockBrandPrefixService is a mock of BrandPrefixService interface.
+type MockBrandPrefixService struct {
+	ctrl     *gomock.Controller
+	recorder *MockBrandPrefixServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockBrandPrefixServiceMockRecorder is the mock recorder for MockBrandPrefixService.
+type MockBrandPrefixServiceMockRecorder struct {
+	mock *MockBrandPrefixService
+}
+
+// NewMockBrandPrefixService creates a new mock instance.
+func NewMockBrandPrefixService(ctrl *gomock.Controller) *MockBrandPrefixService {
+	mock := &MockBrandPrefixService{ctrl: ctrl}
+	mock.recorder = &MockBrandPrefixServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockBrandPrefixService) EXPECT() *MockBrandPrefixServiceMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockBrandPrefixService) Create(ctx *gofr.Context, orgID, actorID int64, in services.BrandPrefixInput) (*models.BrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, orgID, actorID, in)
+	ret0, _ := ret[0].(*models.BrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockBrandPrefixServiceMockRecorder) Create(ctx, orgID, actorID, in any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockBrandPrefixService)(nil).Create), ctx, orgID, actorID, in)
+}
+
+// Delete mocks base method.
+func (m *MockBrandPrefixService) Delete(ctx *gofr.Context, orgID, actorID, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, orgID, actorID, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockBrandPrefixServiceMockRecorder) Delete(ctx, orgID, actorID, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockBrandPrefixService)(nil).Delete), ctx, orgID, actorID, id)
+}
+
+// List mocks base method.
+func (m *MockBrandPrefixService) List(ctx *gofr.Context, orgID int64) ([]models.BrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, orgID)
+	ret0, _ := ret[0].([]models.BrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockBrandPrefixServiceMockRecorder) List(ctx, orgID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockBrandPrefixService)(nil).List), ctx, orgID)
+}
+
+// SetPrimary mocks base method.
+func (m *MockBrandPrefixService) SetPrimary(ctx *gofr.Context, orgID, actorID, id int64) (*models.BrandPrefix, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetPrimary", ctx, orgID, actorID, id)
+	ret0, _ := ret[0].(*models.BrandPrefix)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetPrimary indicates an expected call of SetPrimary.
+func (mr *MockBrandPrefixServiceMockRecorder) SetPrimary(ctx, orgID, actorID, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPrimary", reflect.TypeOf((*MockBrandPrefixService)(nil).SetPrimary), ctx, orgID, actorID, id)
 }
 
 // MockDomainService is a mock of DomainService interface.

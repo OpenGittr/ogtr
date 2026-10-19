@@ -2,6 +2,7 @@
 // record, verify, then set a primary domain — short URLs across the app
 // switch to it. Members see a read-only list. Verification failures (409:
 // record missing / not propagated / wrong value) surface verbatim per row.
+// Brand prefixes (path-scoped links on the shared domain) live below.
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
@@ -10,6 +11,7 @@ import { ApiError, LIMIT_REACHED, endpoints } from "../lib/api";
 import { limitNoticeAction } from "../ext";
 import type { OrgDomain } from "../lib/types";
 import { usePageTitle } from "../lib/usePageTitle";
+import BrandPrefixesSection from "../components/BrandPrefixesSection";
 import {
   CopyButton,
   EmptyIcon,
@@ -427,6 +429,8 @@ export default function DomainsPage() {
           </ul>
         )}
       </section>
+
+      <BrandPrefixesSection isOwner={isOwner} />
     </div>
   );
 }

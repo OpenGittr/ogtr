@@ -103,7 +103,7 @@ func TestResolveHandler_Root_CustomDomainNeverBounces(t *testing.T) {
 
 func TestResolveHandler_Redirect(t *testing.T) {
 	h, svc := newResolveHandler(t)
-	svc.EXPECT().Resolve(gomock.Any(), "abc1234", "", gomock.Any()).
+	svc.EXPECT().Resolve(gomock.Any(), "", "abc1234", "", gomock.Any()).
 		Return(&services.Resolution{Code: "abc1234", URL: "https://example.com?utm_source=ogtr"}, nil)
 
 	ctx := newTestCtx(t, http.MethodGet, "/abc1234", "", nil, map[string]string{"code": "abc1234"})
@@ -118,7 +118,7 @@ func TestResolveHandler_Redirect(t *testing.T) {
 
 func TestResolveHandler_Redirect_UnknownCode(t *testing.T) {
 	h, svc := newResolveHandler(t)
-	svc.EXPECT().Resolve(gomock.Any(), "nope", "", gomock.Any()).
+	svc.EXPECT().Resolve(gomock.Any(), "", "nope", "", gomock.Any()).
 		Return(nil, apierrors.NotFound("short link not found"))
 
 	ctx := newTestCtx(t, http.MethodGet, "/nope", "", nil, map[string]string{"code": "nope"})
@@ -136,7 +136,7 @@ func TestResolveHandler_Redirect_PassesVisitorEnv(t *testing.T) {
 
 	env := visitor.Env{DeviceType: "Mobile", MobileOS: "iOS", Browser: "Safari", Referrer: "https://t.co/x", IP: "1.2.3.4"}
 
-	svc.EXPECT().Resolve(gomock.Any(), "abc1234", "", env).
+	svc.EXPECT().Resolve(gomock.Any(), "", "abc1234", "", env).
 		Return(&services.Resolution{Code: "abc1234", URL: "https://example.com"}, nil)
 
 	ctx := newTestCtx(t, http.MethodGet, "/abc1234", "", nil, map[string]string{"code": "abc1234"})
@@ -161,7 +161,7 @@ func TestResolveHandler_Resolve_WithAPIKey(t *testing.T) {
 			setup: func(svc *MockResolveService, keys *MockAPIKeyService) {
 				keys.EXPECT().Authenticate(gomock.Any(), rawKey).
 					Return(&models.APIKey{ID: 11, OrgID: 42}, nil)
-				svc.EXPECT().Resolve(gomock.Any(), "abc1234", "", gomock.Any()).Return(res, nil)
+				svc.EXPECT().Resolve(gomock.Any(), "", "abc1234", "", gomock.Any()).Return(res, nil)
 			},
 		},
 		{
@@ -213,7 +213,7 @@ func TestResolveHandler_Resolve(t *testing.T) {
 			desc:  "resolves with tag",
 			query: "?code=abc1234&tag=campaign-42",
 			setup: func(svc *MockResolveService) {
-				svc.EXPECT().Resolve(gomock.Any(), "abc1234", "campaign-42", gomock.Any()).Return(res, nil)
+				svc.EXPECT().Resolve(gomock.Any(), "", "abc1234", "campaign-42", gomock.Any()).Return(res, nil)
 			},
 		},
 		{desc: "missing code", query: "", wantErr: true},

@@ -19,11 +19,12 @@ import (
 )
 
 type resolveMocks struct {
-	links   *MockLinkStore
-	clicks  *MockClickStore
-	rules   *MockRuleStore
-	domains *MockDomainStore
-	geo     *MockLocationResolver
+	links    *MockLinkStore
+	clicks   *MockClickStore
+	rules    *MockRuleStore
+	domains  *MockDomainStore
+	prefixes *MockBrandPrefixStore
+	geo      *MockLocationResolver
 }
 
 func newResolveService(t *testing.T) (*ResolveService, resolveMocks, *gofr.Context) {
@@ -31,11 +32,12 @@ func newResolveService(t *testing.T) (*ResolveService, resolveMocks, *gofr.Conte
 
 	ctrl := gomock.NewController(t)
 	m := resolveMocks{
-		links:   NewMockLinkStore(ctrl),
-		clicks:  NewMockClickStore(ctrl),
-		rules:   NewMockRuleStore(ctrl),
-		domains: NewMockDomainStore(ctrl),
-		geo:     NewMockLocationResolver(ctrl),
+		links:    NewMockLinkStore(ctrl),
+		clicks:   NewMockClickStore(ctrl),
+		rules:    NewMockRuleStore(ctrl),
+		domains:  NewMockDomainStore(ctrl),
+		prefixes: NewMockBrandPrefixStore(ctrl),
+		geo:      NewMockLocationResolver(ctrl),
 	}
 
 	mockContainer, _ := container.NewMockContainer(t)
@@ -48,7 +50,7 @@ func newResolveService(t *testing.T) (*ResolveService, resolveMocks, *gofr.Conte
 	// (throttle-specific tests build their own).
 	throttle := ratelimit.NewGuessThrottle(1000, time.Minute, time.Minute)
 
-	return NewResolveService(m.links, m.clicks, m.rules, m.domains, m.geo, throttle, "ogtr", "sho.rt:5810", ""), m, ctx
+	return NewResolveService(m.links, m.clicks, m.rules, m.domains, m.prefixes, m.geo, throttle, "ogtr", "sho.rt:5810", ""), m, ctx
 }
 
 // stubNoTargeting makes GeoIP resolve nothing and the link carry no rules —
@@ -113,7 +115,7 @@ func TestResolveService_UnknownCode(t *testing.T) {
 	svc, m, ctx := newResolveService(t)
 	m.links.EXPECT().GetByCode(gomock.Any(), "nope").Return(nil, nil)
 
-	_, err := svc.Resolve(ctx, "nope", "", mobileEnv(""))
+	_, err := svc.Resolve(ctx, "", "nope", "", mobileEnv(""))
 
 	require.Error(t, err)
 	assertStatus(t, err, http.StatusNotFound)
@@ -145,7 +147,7 @@ func TestResolveService_AutoUTMSources(t *testing.T) {
 
 			captureClick(m, &recorded)
 
-			res, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(tc.referrer))
+			res, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv(tc.referrer))
 
 			require.NoError(t, err)
 			assert.Contains(t, res.URL, "utm_source="+tc.wantSource)
@@ -171,7 +173,7 @@ func TestResolveService_ExplicitUTMsSkipAutoTag(t *testing.T) {
 
 	captureClick(m, &recorded)
 
-	res, err := svc.Resolve(ctx, "abc1234", "", mobileEnv("https://google.com"))
+	res, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv("https://google.com"))
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://example.com/p?utm_source=tw", res.URL, "no auto-tagging on explicit-UTM links")
@@ -192,7 +194,7 @@ func TestResolveService_ClickRecordsEnvironmentAndTag(t *testing.T) {
 
 	captureClick(m, &recorded)
 
-	_, err := svc.Resolve(ctx, "abc1234", "campaign-42", mobileEnv("https://t.co/x"))
+	_, err := svc.Resolve(ctx, "", "abc1234", "campaign-42", mobileEnv("https://t.co/x"))
 
 	require.NoError(t, err)
 	assert.Equal(t, int64(3), recorded.OrgID)
@@ -218,7 +220,7 @@ func TestResolveService_RecordingFailuresNeverBlockTheRedirect(t *testing.T) {
 	m.links.EXPECT().RecordVisit(gomock.Any(), int64(9)).Return(assert.AnError)
 	m.clicks.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(assert.AnError)
 
-	res, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+	res, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv(""))
 
 	require.NoError(t, err)
 	assert.Contains(t, res.URL, "https://example.com")
@@ -229,7 +231,7 @@ func TestResolveService_StoreError(t *testing.T) {
 	svc, m, ctx := newResolveService(t)
 	m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(nil, assert.AnError)
 
-	_, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+	_, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv(""))
 	require.Error(t, err)
 }
 
@@ -246,7 +248,7 @@ func TestResolveService_ScheduleWindow(t *testing.T) {
 		// No RecordVisit/Insert expectations: an out-of-window link records nothing.
 		m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(link, nil)
 
-		_, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+		_, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv(""))
 
 		var scheduled *ScheduledLinkError
 		require.ErrorAs(t, err, &scheduled)
@@ -259,7 +261,7 @@ func TestResolveService_ScheduleWindow(t *testing.T) {
 		link.ExpiresAt = &past
 		m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").Return(link, nil)
 
-		_, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+		_, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv(""))
 
 		var expired *ExpiredLinkError
 		require.ErrorAs(t, err, &expired)
@@ -276,7 +278,7 @@ func TestResolveService_ScheduleWindow(t *testing.T) {
 		m.links.EXPECT().RecordVisit(gomock.Any(), int64(9)).Return(nil)
 		m.clicks.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(nil)
 
-		res, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+		res, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv(""))
 
 		require.NoError(t, err)
 		assert.Contains(t, res.URL, "https://example.com")
@@ -313,7 +315,7 @@ func TestResolveService_Deeplink(t *testing.T) {
 
 			captureClick(m, &recorded)
 
-			res, err := svc.Resolve(ctx, "abc1234", "", envWithOS(tc.os))
+			res, err := svc.Resolve(ctx, "", "abc1234", "", envWithOS(tc.os))
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantDeeplink, recorded.IsDeeplink)
@@ -342,7 +344,7 @@ func TestResolveService_DeeplinkSinglePlatform(t *testing.T) {
 	captureClick(m, &recorded)
 
 	// Android visitor, but only an iOS config: no deep link.
-	res, err := svc.Resolve(ctx, "abc1234", "", envWithOS(visitor.OSAndroid))
+	res, err := svc.Resolve(ctx, "", "abc1234", "", envWithOS(visitor.OSAndroid))
 
 	require.NoError(t, err)
 	assert.False(t, recorded.IsDeeplink)
@@ -457,7 +459,7 @@ func TestResolveService_TargetRules(t *testing.T) {
 
 			captureClick(m, &recorded)
 
-			res, err := svc.Resolve(ctx, "abc1234", "", envWithOS(tc.os))
+			res, err := svc.Resolve(ctx, "", "abc1234", "", envWithOS(tc.os))
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantMatched, recorded.TargetMatched)
@@ -485,7 +487,7 @@ func TestResolveService_RuleOverridesDeeplinkURL(t *testing.T) {
 
 	captureClick(m, &recorded)
 
-	res, err := svc.Resolve(ctx, "abc1234", "", envWithOS(visitor.OSAndroid))
+	res, err := svc.Resolve(ctx, "", "abc1234", "", envWithOS(visitor.OSAndroid))
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://rule.example.com", res.URL)
@@ -505,7 +507,7 @@ func TestResolveService_RuleListingFailureIsSkipped(t *testing.T) {
 
 	captureClick(m, &recorded)
 
-	res, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+	res, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv(""))
 
 	require.NoError(t, err, "a rules read failure must never block the redirect")
 	assert.Contains(t, res.URL, "https://example.com")
@@ -525,7 +527,7 @@ func TestResolveService_LegacyRuleWithoutConditionsNeverMatches(t *testing.T) {
 
 	captureClick(m, &recorded)
 
-	res, err := svc.Resolve(ctx, "abc1234", "", mobileEnv(""))
+	res, err := svc.Resolve(ctx, "", "abc1234", "", mobileEnv(""))
 
 	require.NoError(t, err)
 	assert.Contains(t, res.URL, "https://example.com")
@@ -571,7 +573,7 @@ func TestResolveService_CustomDomainResolvesOwnOrg(t *testing.T) {
 
 			captureClick(m, &recorded)
 
-			res, err := svc.Resolve(ctx, "abc1234", "", hostEnv(tc.host))
+			res, err := svc.Resolve(ctx, "", "abc1234", "", hostEnv(tc.host))
 
 			require.NoError(t, err)
 			assert.Contains(t, res.URL, "https://example.com")
@@ -589,7 +591,7 @@ func TestResolveService_CustomDomainHidesOtherOrgsCodes(t *testing.T) {
 	m.links.EXPECT().GetByCode(gomock.Any(), "abc1234").
 		Return(publicLink(9, "abc1234", "https://example.com"), nil)
 
-	_, err := svc.Resolve(ctx, "abc1234", "", hostEnv("links.example.com"))
+	_, err := svc.Resolve(ctx, "", "abc1234", "", hostEnv("links.example.com"))
 
 	require.Error(t, err)
 	assertStatus(t, err, http.StatusNotFound)
@@ -611,7 +613,7 @@ func TestResolveService_NonServingHostsAre404(t *testing.T) {
 			m.domains.EXPECT().GetByHostname(gomock.Any(), "links.example.com").Return(tc.domain, nil)
 
 			// The link is never even looked up (no GetByCode expectation).
-			_, err := svc.Resolve(ctx, "abc1234", "", hostEnv("links.example.com"))
+			_, err := svc.Resolve(ctx, "", "abc1234", "", hostEnv("links.example.com"))
 
 			require.Error(t, err)
 			assertStatus(t, err, http.StatusNotFound)
@@ -635,7 +637,7 @@ func TestResolveService_DeploymentHostsStayGlobal(t *testing.T) {
 
 			captureClick(m, &recorded)
 
-			res, err := svc.Resolve(ctx, "abc1234", "", hostEnv(host))
+			res, err := svc.Resolve(ctx, "", "abc1234", "", hostEnv(host))
 
 			require.NoError(t, err)
 			assert.Contains(t, res.URL, "https://example.com")
@@ -647,6 +649,6 @@ func TestResolveService_DomainLookupErrorFailsClosed(t *testing.T) {
 	svc, m, ctx := newResolveService(t)
 	m.domains.EXPECT().GetByHostname(gomock.Any(), "links.example.com").Return(nil, assert.AnError)
 
-	_, err := svc.Resolve(ctx, "abc1234", "", hostEnv("links.example.com"))
+	_, err := svc.Resolve(ctx, "", "abc1234", "", hostEnv("links.example.com"))
 	require.Error(t, err)
 }

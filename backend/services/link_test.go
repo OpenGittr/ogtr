@@ -52,17 +52,43 @@ func newLinkServiceWithPolicy(t *testing.T, policy limits.Policy) (*LinkService,
 	*MockLinkStore, *MockMemberStore, *MockDomainStore, *gofr.Context) {
 	t.Helper()
 
+	svc, links, members, domains, prefixes, ctx := newLinkServiceWithPrefixes(t, policy)
+
+	// Default for every pre-brand-prefix test: no primary prefix (display
+	// stays SHORT_DOMAIN) and no held prefix collides with any code.
+	permissivePrefixes(prefixes)
+
+	return svc, links, members, domains, ctx
+}
+
+// newLinkServiceWithPrefixes exposes the brand-prefix mock with no stubbed
+// expectations, for the prefix display / exclusion tests.
+func newLinkServiceWithPrefixes(t *testing.T, policy limits.Policy) (*LinkService,
+	*MockLinkStore, *MockMemberStore, *MockDomainStore, *MockBrandPrefixStore, *gofr.Context) {
+	t.Helper()
+
 	ctrl := gomock.NewController(t)
 	links := NewMockLinkStore(ctrl)
 	members := NewMockMemberStore(ctrl)
 	domains := NewMockDomainStore(ctrl)
+	prefixes := NewMockBrandPrefixStore(ctrl)
 
 	mockContainer, _ := container.NewMockContainer(t)
 	ctx := &gofr.Context{Context: context.Background(), Container: mockContainer}
 
 	// nil scanner = allow every destination; scanning behavior has its own
 	// tests with a mock URLScanner.
-	return NewLinkService(links, NewMockRuleStore(ctrl), members, domains, nil, policy, nil, "http", "sho.rt", ""), links, members, domains, ctx
+	svc := NewLinkService(links, NewMockRuleStore(ctrl), members, domains, prefixes, nil, policy, nil,
+		"http", "sho.rt", "")
+
+	return svc, links, members, domains, prefixes, ctx
+}
+
+// permissivePrefixes stubs the brand-prefix store as empty: no primary
+// prefix and nothing held.
+func permissivePrefixes(prefixes *MockBrandPrefixStore) {
+	prefixes.EXPECT().PrimaryApprovedPrefix(gomock.Any(), gomock.Any()).Return("", nil).AnyTimes()
+	prefixes.EXPECT().IsHeld(gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
 }
 
 func publicLink(id int64, code, dest string) *models.Link {

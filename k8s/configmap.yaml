@@ -62,6 +62,9 @@ data:
 
   # Extra reserved short-code words + extra shortener hosts (comma-separated).
   RESERVED_ALIASES: ""
+
+  # Brand prefixes: "true" skips operator review of prefix requests.
+  BRAND_PREFIX_AUTO_APPROVE: "false"
   SHORTENER_DOMAINS: ""
 
   # Destination re-scan of recently clicked links (>=24h runs daily).
