@@ -62,8 +62,8 @@ func NewAuthService(providers map[string]auth.IdentityProvider, tokens TokenIssu
 // JSON) for ogtr session tokens: verify identity with the named
 // provider, JIT-create the user, convert pending invites to memberships,
 // auto-join by email domain when otherwise org-less, and scope the token
-// pair to the user's first org (or none). The flow after Verify is identical
-// for every provider.
+// pair to the org of an invite just accepted, else the user's first org (or
+// none). The flow after Verify is identical for every provider.
 func (s *AuthService) Login(ctx *gofr.Context, provider, credential string) (*AuthResult, error) {
 	idp, ok := s.providers[provider]
 	if !ok {
@@ -106,7 +106,8 @@ func (s *AuthService) Login(ctx *gofr.Context, provider, credential string) (*Au
 
 	s.touchLastActive(ctx, user.ID)
 
-	if err := s.acceptPendingInvites(ctx, user, email); err != nil {
+	joined, err := s.acceptPendingInvites(ctx, user.ID, email)
+	if err != nil {
 		return nil, err
 	}
 
@@ -122,7 +123,7 @@ func (s *AuthService) Login(ctx *gofr.Context, provider, credential string) (*Au
 		}
 	}
 
-	return s.buildAuthResult(user, orgs)
+	return s.buildAuthResult(user, orgs, joined)
 }
 
 // touchLastActive records "seen now" on the two session-granting paths
@@ -155,6 +156,12 @@ func (s *AuthService) joinAsMember(ctx *gofr.Context, orgID, userID int64) (join
 	}
 
 	if err := s.members.Add(ctx, orgID, userID, models.RoleMember); err != nil {
+		// A concurrent request (login racing /me or refresh) may have added
+		// the same membership first; that is a join, not a failure.
+		if role, roleErr := s.members.GetRole(ctx, orgID, userID); roleErr == nil && role != "" {
+			return true, nil
+		}
+
 		return false, err
 	}
 
@@ -163,38 +170,44 @@ func (s *AuthService) joinAsMember(ctx *gofr.Context, orgID, userID int64) (join
 
 // acceptPendingInvites converts the email's pending invites to memberships
 // (via the joinAsMember choke point — a policy denial leaves the invite
-// PENDING and the login continues).
-func (s *AuthService) acceptPendingInvites(ctx *gofr.Context, user *models.User, email string) error {
+// PENDING and the caller continues). It runs on login, refresh and /me, so
+// a user who is already signed in picks up an invite without signing out.
+// It returns the orgs joined by this call, oldest invite first.
+func (s *AuthService) acceptPendingInvites(ctx *gofr.Context, userID int64, email string) ([]int64, error) {
 	invites, err := s.invites.PendingForEmail(ctx, email)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	var joinedOrgs []int64
+
 	for i := range invites {
-		role, err := s.members.GetRole(ctx, invites[i].OrgID, user.ID)
+		role, err := s.members.GetRole(ctx, invites[i].OrgID, userID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if role == "" {
-			joined, err := s.joinAsMember(ctx, invites[i].OrgID, user.ID)
+			joined, err := s.joinAsMember(ctx, invites[i].OrgID, userID)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if !joined {
-				continue // invite stays PENDING; retried on a later login
+				continue // invite stays PENDING; retried on a later call
 			}
+
+			joinedOrgs = append(joinedOrgs, invites[i].OrgID)
 		}
 
 		if err := s.invites.SetStatus(ctx, invites[i].ID, models.InviteStatusAccepted); err != nil {
-			return err
+			return nil, err
 		}
 
-		ctx.Logger.Infof("invite %d accepted: user %d joined org %d", invites[i].ID, user.ID, invites[i].OrgID)
+		ctx.Logger.Infof("invite %d accepted: user %d joined org %d", invites[i].ID, userID, invites[i].OrgID)
 	}
 
-	return nil
+	return joinedOrgs, nil
 }
 
 // autoJoinByDomain joins an org-less user to the first org whose
@@ -225,7 +238,11 @@ func (s *AuthService) autoJoinByDomain(ctx *gofr.Context, user *models.User, dom
 	return []models.OrgMembership{{OrgID: org.ID, Name: org.Name, Slug: org.Slug, Role: models.RoleMember}}, nil
 }
 
-func (s *AuthService) buildAuthResult(user *models.User, orgs []models.OrgMembership) (*AuthResult, error) {
+// buildAuthResult scopes the pair to the most recently joined org when this
+// login accepted an invite (so an invitee who already has an org lands in
+// the one they were invited to), else to the user's first org.
+func (s *AuthService) buildAuthResult(user *models.User, orgs []models.OrgMembership,
+	joined []int64) (*AuthResult, error) {
 	var (
 		activeOrgID int64
 		role        string
@@ -233,6 +250,14 @@ func (s *AuthService) buildAuthResult(user *models.User, orgs []models.OrgMember
 
 	if len(orgs) > 0 {
 		activeOrgID, role = orgs[0].OrgID, orgs[0].Role
+	}
+
+	if len(joined) > 0 {
+		for _, o := range orgs {
+			if o.OrgID == joined[len(joined)-1] {
+				activeOrgID, role = o.OrgID, o.Role
+			}
+		}
 	}
 
 	pair, err := s.tokens.IssuePair(user.ID, activeOrgID, role)
@@ -245,7 +270,8 @@ func (s *AuthService) buildAuthResult(user *models.User, orgs []models.OrgMember
 
 // Refresh validates a refresh token and issues a fresh pair. Membership is
 // re-checked so a revoked member does not keep an org-scoped session; if the
-// membership is gone the new pair is org-less.
+// membership is gone the new pair is org-less. Pending invites are accepted
+// here too; an org-less session is scoped to the org it just joined.
 func (s *AuthService) Refresh(ctx *gofr.Context, refreshToken string) (models.TokenPair, error) {
 	claims, err := s.tokens.Parse(refreshToken, auth.TokenTypeRefresh)
 	if err != nil {
@@ -263,6 +289,11 @@ func (s *AuthService) Refresh(ctx *gofr.Context, refreshToken string) (models.To
 
 	s.touchLastActive(ctx, user.ID)
 
+	joined, err := s.acceptPendingInvites(ctx, user.ID, user.Email)
+	if err != nil {
+		return models.TokenPair{}, err
+	}
+
 	var (
 		orgID int64
 		role  string
@@ -279,10 +310,16 @@ func (s *AuthService) Refresh(ctx *gofr.Context, refreshToken string) (models.To
 		}
 	}
 
+	if orgID == 0 && len(joined) > 0 {
+		orgID, role = joined[len(joined)-1], models.RoleMember
+	}
+
 	return s.tokens.IssuePair(user.ID, orgID, role)
 }
 
-// Me returns the current user with all their org memberships.
+// Me returns the current user with all their org memberships, accepting any
+// pending invites first so a newly joined org shows up without a re-login.
+// The session's active org is unchanged; the SPA switches to a joined org.
 func (s *AuthService) Me(ctx *gofr.Context, claims *auth.SessionClaims) (*MeResult, error) {
 	user, err := s.users.GetByID(ctx, claims.UserID)
 	if err != nil {
@@ -291,6 +328,10 @@ func (s *AuthService) Me(ctx *gofr.Context, claims *auth.SessionClaims) (*MeResu
 
 	if user == nil {
 		return nil, apierrors.Unauthorized("account no longer exists")
+	}
+
+	if _, err := s.acceptPendingInvites(ctx, user.ID, user.Email); err != nil {
+		return nil, err
 	}
 
 	orgs, err := s.members.ListOrgsForUser(ctx, user.ID)

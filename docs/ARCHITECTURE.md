@@ -178,7 +178,12 @@ server-side revocation is the one thing this can't do; revisit only if that requ
 appears.)
 
 Login also auto-converts any pending invites for the verified email into MEMBER memberships
-(invite → `ACCEPTED`) before resolving the active org. `POST /api/v1/orgs` returns the new org
+(invite → `ACCEPTED`) before resolving the active org; an invite accepted by that login makes
+its org the active one (so an invitee who already owns an org lands in the inviting org).
+Refresh and `GET /me` convert pending invites too, so an already-signed-in user picks up an
+invite without re-login: an org-less refresh is scoped to the joined org, an org-scoped one
+keeps its org (the new org appears in the switcher), and the SPA's org-less onboarding screen
+lists joined orgs to open, re-checking `/me` when the tab regains focus. `POST /api/v1/orgs` returns the new org
 *plus* a token pair already scoped to it (creator = OWNER), so the SPA needs no follow-up
 switch-org call. OWNER-only operations check the role in the DB, not the (≤15m stale) token
 claim. Removing the last OWNER of an org is rejected (422), which also covers an OWNER
@@ -818,7 +823,7 @@ resource creation and analytics viewing:
   | `CanCreateOrg(ctx, userID)` | `POST /api/v1/orgs` (OrgService.Create) |
   | `CanCreateLink(ctx, orgID, userID)` | link creation only — the shared `shorten` path behind both the JWT and API-key routes (`userID` is 0 on the key path). Never on edits (alias / deep link / destination), and not on the already-short echo, which creates nothing |
   | `CanAddDomain(ctx, orgID)` | custom-domain registration (DomainService.Create) |
-  | `CanAddMember(ctx, orgID)` | invite creation (OrgService.CreateInvite) AND the single membership-creating choke point on the login path (AuthService.joinAsMember, used by both invite acceptance and auto-join) |
+  | `CanAddMember(ctx, orgID)` | invite creation (OrgService.CreateInvite) AND the single membership-creating choke point on the login path (AuthService.joinAsMember, used by both invite acceptance — on login, refresh and `/me` — and auto-join) |
   | `CanCreateAPIKey(ctx, orgID)` | API-key creation (APIKeyService.Create) |
   | `AnalyticsWindow(ctx, orgID) (Window, error)` | every stats entry point (see Window semantics below) |
 

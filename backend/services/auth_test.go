@@ -139,6 +139,64 @@ func TestAuthService_Login(t *testing.T) {
 			wantActive: 3,
 		},
 		{
+			desc: "invitee who already owns an org lands in the invited org",
+			setup: func(m authMocks) {
+				invite := models.Invite{ID: 12, OrgID: 5, Email: "alice@acme.com", Status: models.InviteStatusPending}
+				m.provider.EXPECT().Verify(gomock.Any(), "cred").Return(identity, nil)
+				m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
+				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{invite}, nil)
+				m.members.EXPECT().GetRole(gomock.Any(), int64(5), int64(7)).Return("", nil)
+				m.members.EXPECT().Add(gomock.Any(), int64(5), int64(7), models.RoleMember).Return(nil)
+				m.invites.EXPECT().SetStatus(gomock.Any(), int64(12), models.InviteStatusAccepted).Return(nil)
+				m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).Return([]models.OrgMembership{
+					membership, {OrgID: 5, Name: "Beta", Slug: "beta", Role: models.RoleMember},
+				}, nil)
+				m.tokens.EXPECT().IssuePair(int64(7), int64(5), models.RoleMember).Return(pairFor(7, 5), nil)
+			},
+			wantOrgs:   2,
+			wantActive: 5,
+		},
+		{
+			desc: "already-accepted invite keeps the first org active",
+			setup: func(m authMocks) {
+				invite := models.Invite{ID: 12, OrgID: 5, Email: "alice@acme.com", Status: models.InviteStatusPending}
+				m.provider.EXPECT().Verify(gomock.Any(), "cred").Return(identity, nil)
+				m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
+				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{invite}, nil)
+				m.members.EXPECT().GetRole(gomock.Any(), int64(5), int64(7)).Return(models.RoleMember, nil)
+				m.invites.EXPECT().SetStatus(gomock.Any(), int64(12), models.InviteStatusAccepted).Return(nil)
+				m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).Return([]models.OrgMembership{
+					membership, {OrgID: 5, Name: "Beta", Slug: "beta", Role: models.RoleMember},
+				}, nil)
+				m.tokens.EXPECT().IssuePair(int64(7), int64(3), models.RoleOwner).Return(pairFor(7, 3), nil)
+			},
+			wantOrgs:   2,
+			wantActive: 3,
+		},
+		{
+			desc: "concurrent join of the same invite counts as joined",
+			setup: func(m authMocks) {
+				invite := models.Invite{ID: 12, OrgID: 3, Email: "alice@acme.com", Status: models.InviteStatusPending}
+				m.provider.EXPECT().Verify(gomock.Any(), "cred").Return(identity, nil)
+				m.users.EXPECT().GetByEmail(gomock.Any(), "alice@acme.com").Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
+				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{invite}, nil)
+				gomock.InOrder(
+					m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return("", nil),
+					m.members.EXPECT().Add(gomock.Any(), int64(3), int64(7), models.RoleMember).Return(errStore),
+					m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return(models.RoleMember, nil),
+				)
+				m.invites.EXPECT().SetStatus(gomock.Any(), int64(12), models.InviteStatusAccepted).Return(nil)
+				m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).
+					Return([]models.OrgMembership{{OrgID: 3, Name: "Acme", Slug: "acme", Role: models.RoleMember}}, nil)
+				m.tokens.EXPECT().IssuePair(int64(7), int64(3), models.RoleMember).Return(pairFor(7, 3), nil)
+			},
+			wantOrgs:   1,
+			wantActive: 3,
+		},
+		{
 			desc: "provider rejection propagates",
 			setup: func(m authMocks) {
 				m.provider.EXPECT().Verify(gomock.Any(), "cred").
@@ -280,8 +338,10 @@ func TestAuthService_Login_DevProvider(t *testing.T) {
 }
 
 func TestAuthService_Refresh(t *testing.T) {
-	user := &models.User{ID: 7, Status: models.UserStatusEnabled}
+	user := &models.User{ID: 7, Email: "alice@acme.com", Status: models.UserStatusEnabled}
 	refreshClaims := &auth.SessionClaims{UserID: 7, OrgID: 3, Role: models.RoleOwner, TokenType: auth.TokenTypeRefresh}
+	orglessClaims := &auth.SessionClaims{UserID: 7, TokenType: auth.TokenTypeRefresh}
+	invite := models.Invite{ID: 12, OrgID: 5, Email: "alice@acme.com", Status: models.InviteStatusPending}
 
 	tests := []struct {
 		desc    string
@@ -294,6 +354,7 @@ func TestAuthService_Refresh(t *testing.T) {
 				m.tokens.EXPECT().Parse("ref", auth.TokenTypeRefresh).Return(refreshClaims, nil)
 				m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
 				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
+				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return(nil, nil)
 				m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return(models.RoleMember, nil)
 				m.tokens.EXPECT().IssuePair(int64(7), int64(3), models.RoleMember).Return(pairFor(7, 3), nil)
 			},
@@ -304,9 +365,47 @@ func TestAuthService_Refresh(t *testing.T) {
 				m.tokens.EXPECT().Parse("ref", auth.TokenTypeRefresh).Return(refreshClaims, nil)
 				m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
 				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
+				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return(nil, nil)
 				m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return("", nil)
 				m.tokens.EXPECT().IssuePair(int64(7), int64(0), "").Return(pairFor(7, 0), nil)
 			},
+		},
+		{
+			desc: "org-less session accepts a pending invite and is scoped to that org",
+			setup: func(m authMocks) {
+				m.tokens.EXPECT().Parse("ref", auth.TokenTypeRefresh).Return(orglessClaims, nil)
+				m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
+				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{invite}, nil)
+				m.members.EXPECT().GetRole(gomock.Any(), int64(5), int64(7)).Return("", nil)
+				m.members.EXPECT().Add(gomock.Any(), int64(5), int64(7), models.RoleMember).Return(nil)
+				m.invites.EXPECT().SetStatus(gomock.Any(), int64(12), models.InviteStatusAccepted).Return(nil)
+				m.tokens.EXPECT().IssuePair(int64(7), int64(5), models.RoleMember).Return(pairFor(7, 5), nil)
+			},
+		},
+		{
+			desc: "org-scoped session accepts a pending invite but keeps its org",
+			setup: func(m authMocks) {
+				m.tokens.EXPECT().Parse("ref", auth.TokenTypeRefresh).Return(refreshClaims, nil)
+				m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
+				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{invite}, nil)
+				m.members.EXPECT().GetRole(gomock.Any(), int64(5), int64(7)).Return("", nil)
+				m.members.EXPECT().Add(gomock.Any(), int64(5), int64(7), models.RoleMember).Return(nil)
+				m.invites.EXPECT().SetStatus(gomock.Any(), int64(12), models.InviteStatusAccepted).Return(nil)
+				m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return(models.RoleOwner, nil)
+				m.tokens.EXPECT().IssuePair(int64(7), int64(3), models.RoleOwner).Return(pairFor(7, 3), nil)
+			},
+		},
+		{
+			desc: "invite store failure propagates",
+			setup: func(m authMocks) {
+				m.tokens.EXPECT().Parse("ref", auth.TokenTypeRefresh).Return(refreshClaims, nil)
+				m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
+				m.users.EXPECT().TouchLastActive(gomock.Any(), int64(7)).Return(nil)
+				m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return(nil, errStore)
+			},
+			wantErr: true,
 		},
 		{
 			desc: "invalid refresh token",
@@ -349,8 +448,9 @@ func TestAuthService_Refresh(t *testing.T) {
 func TestAuthService_Me(t *testing.T) {
 	svc, m, ctx := newAuthService(t)
 
-	user := &models.User{ID: 7, Name: "Alice"}
+	user := &models.User{ID: 7, Name: "Alice", Email: "alice@acme.com"}
 	m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
+	m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return(nil, nil)
 	m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).
 		Return([]models.OrgMembership{{OrgID: 3, Role: models.RoleOwner}}, nil)
 
@@ -359,6 +459,28 @@ func TestAuthService_Me(t *testing.T) {
 	assert.Equal(t, user, result.User)
 	assert.Equal(t, int64(3), result.ActiveOrgID)
 	assert.Len(t, result.Orgs, 1)
+}
+
+// TestAuthService_Me_AcceptsPendingInvite: a signed-in, org-less user who was
+// invited after signing in sees the org on the next /me, without re-login;
+// the session's (org-less) scope is left for the SPA to switch.
+func TestAuthService_Me_AcceptsPendingInvite(t *testing.T) {
+	svc, m, ctx := newAuthService(t)
+
+	user := &models.User{ID: 7, Name: "Alice", Email: "alice@acme.com"}
+	invite := models.Invite{ID: 12, OrgID: 5, Email: "alice@acme.com", Status: models.InviteStatusPending}
+	m.users.EXPECT().GetByID(gomock.Any(), int64(7)).Return(user, nil)
+	m.invites.EXPECT().PendingForEmail(gomock.Any(), "alice@acme.com").Return([]models.Invite{invite}, nil)
+	m.members.EXPECT().GetRole(gomock.Any(), int64(5), int64(7)).Return("", nil)
+	m.members.EXPECT().Add(gomock.Any(), int64(5), int64(7), models.RoleMember).Return(nil)
+	m.invites.EXPECT().SetStatus(gomock.Any(), int64(12), models.InviteStatusAccepted).Return(nil)
+	m.members.EXPECT().ListOrgsForUser(gomock.Any(), int64(7)).
+		Return([]models.OrgMembership{{OrgID: 5, Role: models.RoleMember}}, nil)
+
+	result, err := svc.Me(ctx, &auth.SessionClaims{UserID: 7})
+	require.NoError(t, err)
+	assert.Zero(t, result.ActiveOrgID)
+	assert.Equal(t, []models.OrgMembership{{OrgID: 5, Role: models.RoleMember}}, result.Orgs)
 }
 
 func TestAuthService_Me_UserGone(t *testing.T) {

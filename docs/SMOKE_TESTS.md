@@ -82,5 +82,9 @@ Each step is one action → one expected result.
 38. **Brand prefix — revoke & release** — revoke with a reason → `SHORT/<PREFIX>/<code>` 404
     while `SHORT/<code>` still 302, display reverts to `SHORT/<code>`, the reason shows on the
     row, and the owner cannot remove it (409); `…/release` → the value can be requested again.
+39. **Invite while signed in** — user B signs in and sits on onboarding; OWNER A invites B's
+    email → on refocusing the tab B sees A's org with "Open" → Open lands on A's dashboard with
+    A's public links and QR visible. A user who already owns an org and is invited → on next
+    sign-in lands in the inviting org, own org still in the switcher.
 
 Changes to this checklist should be agreed before editing (project convention).

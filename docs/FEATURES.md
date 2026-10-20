@@ -308,7 +308,9 @@ When a link has no explicit UTM parameters, they are inferred per click:
 - Token refresh flow that enriches tokens with app-level claims (user ID, name).
 - **Just-in-time user provisioning** — first login auto-creates the user record from token
   claims (name, email), converts any pending invites, and applies org auto-join by email
-  domain.
+  domain. A login that accepts an invite opens the inviting org; a user who is already
+  signed in picks up a new invite on their next page load or token refresh, without signing
+  out.
 - **Dev sign-in provider** — an explicit opt-in provider (`AUTH_PROVIDERS=dev`) that accepts
   any name+email with no credential check, so a fresh install can be evaluated without
   creating a Google OAuth client. Disabled by default (its endpoint 404s), boot-time WARN when
