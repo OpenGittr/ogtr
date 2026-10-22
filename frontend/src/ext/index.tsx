@@ -19,3 +19,10 @@ export const extraNavItems: { to: string; label: string; icon?: () => JSX.Elemen
  * at a deployment-specific page that explains the deployment's limits.
  */
 export const limitNoticeAction: { to: string; label: string } | null = null;
+
+/**
+ * Optional banner rendered at the top of every dashboard page (e.g. a
+ * deployment's usage notice). It remounts when the active org changes, so it
+ * may fetch org-scoped data on mount; rendering null shows nothing.
+ */
+export const DashboardBanner: (() => JSX.Element | null) | null = null;

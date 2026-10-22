@@ -5,7 +5,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
-import { extraNavItems } from "../ext";
+import { DashboardBanner, extraNavItems } from "../ext";
 import Logo from "./Logo";
 import OrgSwitcher from "./OrgSwitcher";
 import ThemeToggle from "./ThemeToggle";
@@ -158,6 +158,7 @@ export default function AppShell() {
         {/* Keyed by org: switching orgs remounts the page so every list and
             report refetches under the new tenant instead of showing stale data. */}
         <main key={activeOrgId} className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+          {DashboardBanner && <DashboardBanner />}
           <Outlet />
         </main>
       </div>
