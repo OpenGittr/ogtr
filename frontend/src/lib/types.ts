@@ -330,6 +330,8 @@ export interface BrandPrefix {
   decision_reason: string | null;
   decided_at: string | null;
   created_at: string;
+  /** A DLT-portal screenshot is on file (shown only to the operator). */
+  has_screenshot: boolean;
 }
 
 export interface BrandPrefixInput {

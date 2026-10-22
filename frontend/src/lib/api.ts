@@ -219,6 +219,7 @@ async function doRefresh(): Promise<boolean> {
 
 interface RequestOptions {
   method?: string;
+  /** JSON-encoded, except FormData, which is sent as multipart as-is. */
   body?: unknown;
   /** Attach the access token (default true). Login/refresh set false. */
   auth?: boolean;
@@ -231,8 +232,10 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
 
   const doFetch = async (): Promise<Response> => {
     const headers: Record<string, string> = {};
+    const isForm = body instanceof FormData;
 
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    // FormData sets its own multipart Content-Type (with the boundary).
+    if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
 
     if (auth) {
       const tokens = getTokens();
@@ -243,7 +246,7 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
       return await fetch(`${BASE}${path}`, {
         method,
         headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: isForm ? body : body !== undefined ? JSON.stringify(body) : undefined,
       });
     } catch {
       throw new ApiError(0, "Could not reach the server. Check your connection and try again.");
@@ -361,9 +364,17 @@ export const endpoints = {
 
   prefixes: async () => (await api<BrandPrefix[] | null>("/api/v1/org/prefixes")) ?? [],
 
-  /** Files a brand-prefix request (OWNER) — PENDING until the operator approves. */
-  createPrefix: (input: BrandPrefixInput) =>
-    api<BrandPrefix>("/api/v1/org/prefixes", { method: "POST", body: input }),
+  /**
+   * Files a brand-prefix request (OWNER) — PENDING until the operator
+   * approves. Multipart: the fields plus the required DLT-portal screenshot.
+   */
+  createPrefix: (input: BrandPrefixInput, screenshot: File) => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(input)) form.append(key, value);
+    form.append("screenshot", screenshot);
+
+    return api<BrandPrefix>("/api/v1/org/prefixes", { method: "POST", body: form });
+  },
 
   /** Makes this the org's display prefix (OWNER; APPROVED only). */
   setPrimaryPrefix: (id: number) =>

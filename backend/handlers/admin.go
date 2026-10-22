@@ -8,6 +8,7 @@ import (
 
 	"gofr.dev/pkg/gofr"
 	gofrHTTP "gofr.dev/pkg/gofr/http"
+	"gofr.dev/pkg/gofr/http/response"
 
 	"github.com/opengittr/ogtr/backend/models"
 )
@@ -215,6 +216,23 @@ func (h *AdminHandler) ApprovePrefix(ctx *gofr.Context) (any, error) {
 	}
 
 	return p, nil
+}
+
+// PrefixScreenshot handles GET /api/internal/prefixes/{id}/screenshot — the
+// DLT-portal screenshot filed with the request, served as the image itself
+// (content type sniffed at upload: PNG, JPEG or WebP only).
+func (h *AdminHandler) PrefixScreenshot(ctx *gofr.Context) (any, error) {
+	id, err := pathID(ctx, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	shot, err := h.admin.PrefixScreenshot(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.File{Content: shot.Image, ContentType: shot.ContentType}, nil
 }
 
 type prefixDecisionRequest struct {

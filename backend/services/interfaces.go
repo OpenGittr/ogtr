@@ -132,7 +132,8 @@ type DomainStore interface {
 // namespace and the redirect path derives the org FROM the prefix. All prefix
 // comparisons are case-insensitive.
 type BrandPrefixStore interface {
-	Create(ctx *gofr.Context, p *models.BrandPrefix) (*models.BrandPrefix, error)
+	// Create inserts the request and its screenshot in one transaction.
+	Create(ctx *gofr.Context, p *models.BrandPrefix, shot *models.BrandPrefixScreenshot) (*models.BrandPrefix, error)
 	GetByID(ctx *gofr.Context, orgID, id int64) (*models.BrandPrefix, error)
 	GetByPrefix(ctx *gofr.Context, prefix string) (*models.BrandPrefix, error)
 	// IsHeld reports whether the value is a PENDING, APPROVED or REVOKED
@@ -226,6 +227,8 @@ type AdminStore interface {
 	GetPrefix(ctx *gofr.Context, id int64) (*models.AdminBrandPrefix, error)
 	DecidePrefix(ctx *gofr.Context, id int64, from, to string, reason *string) (bool, error)
 	ReleasePrefix(ctx *gofr.Context, id int64) (bool, error)
+	// PrefixScreenshot is (nil, nil) when the prefix has no screenshot.
+	PrefixScreenshot(ctx *gofr.Context, id int64) (*models.BrandPrefixScreenshot, error)
 }
 
 // LinkStatusStore is the admin service's link-status dependency — the same

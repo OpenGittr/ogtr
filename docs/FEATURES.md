@@ -116,13 +116,19 @@ Sections:
   `ACMEIN` and `acmein` can never belong to different orgs. Subject to the full reserved-word
   set (§10.5).
 - **Request** (org OWNER): prefix plus sender evidence — registry (`IN-DLT` in v1), DLT
-  Principal Entity ID, the registered header, and the entity's legal name. The prefix must
-  equal the header (case-insensitive), so review is a match check, not a naming judgment.
-  An org may hold several prefixes (one per header). New requests start **PENDING**.
-- **Approval**: an instance operator reviews PENDING requests through the instance admin
-  API (§9) — approve, or reject with a reason. The reviewer may ask the org for a screenshot
-  of the DLT portal header page out of band; v1 stores no uploaded documents. Org OWNERs are
-  emailed the outcome. `BRAND_PREFIX_AUTO_APPROVE=true` (default false) approves on request,
+  Principal Entity ID, the registered header, the entity's legal name, and a **required
+  screenshot** of the header on the requester's DLT portal (PNG/JPEG/WebP by content, ≤ 2 MB;
+  shown only to the operator). The prefix must equal the header (case-insensitive), so
+  review is a match check, not a naming judgment. An org may hold several prefixes (one per
+  header). New requests start **PENDING**.
+- **Why review at all**: SMS operators refuse non-whitelisted URLs only on commercial (DLT)
+  SMS; the same link travels unchecked over WhatsApp, email and person-to-person SMS. An
+  unreviewed `/<prefix>/` would let anyone claim a bank's or brand's header on the shared
+  domain (impersonation, and a reputation risk to every link on it) or squat a real
+  sender's header before they arrive.
+- **Approval**: an instance operator reviews PENDING requests — the screenshot alongside the
+  typed evidence — through the instance admin API (§9) or an operations console on it —
+  approve, or reject with a reason. Org OWNERs are emailed the outcome. `BRAND_PREFIX_AUTO_APPROVE=true` (default false) approves on request,
   for self-hosted deployments where the operator is the only org.
 - **Revocation**: the operator can revoke an APPROVED prefix with a reason. A revoked prefix
   stops resolving immediately; the org's links keep working at `/{code}`. The value stays

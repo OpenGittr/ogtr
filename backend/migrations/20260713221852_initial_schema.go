@@ -4,7 +4,7 @@ import "gofr.dev/pkg/gofr/migration"
 
 // createInitialSchema creates the full initial schema from ARCHITECTURE.md §2:
 // orgs, users, org_members, invites, links, link_rules, clicks, api_keys,
-// domains, brand_prefixes, abuse_reports, link_edits.
+// domains, brand_prefixes, brand_prefix_screenshots, abuse_reports, link_edits.
 //
 // Notes tied to the spec:
 //   - links.code is a single unique namespace shared by generated codes and
@@ -172,6 +172,7 @@ func createInitialSchema() migration.Migrate {
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
 		createBrandPrefixesTable,
+		createBrandPrefixScreenshotsTable,
 
 		`CREATE TABLE IF NOT EXISTS abuse_reports (
 			id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

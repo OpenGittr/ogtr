@@ -19,5 +19,6 @@ func All() map[int64]migration.Migrate {
 		20260722172929: addUsersLastActive(),
 		20260728221207: addLinkGating(),
 		20261019215545: addBrandPrefixes(),
+		20261022144412: addBrandPrefixScreenshots(),
 	}
 }

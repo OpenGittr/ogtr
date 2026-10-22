@@ -82,6 +82,7 @@ func setup(app *gofr.App, o *options) {
 	// Brand-prefix review (FEATURES.md §1.7): the queue and the operator's
 	// decisions. Conditional on current status — a stale decision is 409.
 	app.GET("/api/internal/prefixes", adminH.Prefixes)
+	app.GET("/api/internal/prefixes/{id}/screenshot", adminH.PrefixScreenshot)
 	app.POST("/api/internal/prefixes/{id}/approve", adminH.ApprovePrefix)
 	app.POST("/api/internal/prefixes/{id}/reject", adminH.RejectPrefix)
 	app.POST("/api/internal/prefixes/{id}/revoke", adminH.RevokePrefix)

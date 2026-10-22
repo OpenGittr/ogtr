@@ -96,6 +96,10 @@ brand_prefixes id, org_id, prefix (unique, case-insensitive collation — stored
                registry (IN-DLT), entity_id, header, entity_name, decision_reason (nullable),
                decided_at (nullable), created_at   (§4 "Brand prefixes")
 
+brand_prefix_screenshots
+               prefix_id (PK, FK → brand_prefixes ON DELETE CASCADE), content_type
+               (sniffed: image/png|jpeg|webp), image (MEDIUMBLOB, ≤ 2 MB), created_at
+
 abuse_reports  id, org_id, link_id, code, reason (≤140), reporter_contact (nullable),
                created_at   (public link reporting, §8 "URL scanning & abuse defenses";
                org/link derived server-side from the reported code)
@@ -360,7 +364,8 @@ Path-scoped entry points on `SHORT_DOMAIN` (FEATURES.md §1.7): `/<prefix>/<code
 senders (Indian DLT SMS) who must whitelist a URL prefix they exclusively control.
 
 ```
-POST   /api/v1/org/prefixes               {prefix, registry, entity_id, header, entity_name}
+POST   /api/v1/org/prefixes               multipart/form-data {prefix, registry, entity_id,
+                                          header, entity_name, screenshot (file, required)}
                                           → PENDING (APPROVED when BRAND_PREFIX_AUTO_APPROVE)
 GET    /api/v1/org/prefixes               list with status + decision_reason (any member)
 PUT    /api/v1/org/prefixes/{id}/primary  make this the org's primary (APPROVED only, else 422)
@@ -373,7 +378,10 @@ The operator side lives on the instance admin service (below):
 
 ```
 GET  /api/internal/prefixes?status=&page=   requests across orgs (25/page), oldest first,
-                                            with org name + evidence; default status=PENDING
+                                            with org name + evidence + has_screenshot;
+                                            default status=PENDING
+GET  /api/internal/prefixes/{id}/screenshot the DLT-portal screenshot as the image itself
+                                            (404 when none — requests filed before it was required)
 POST /api/internal/prefixes/{id}/approve    PENDING → APPROVED
 POST /api/internal/prefixes/{id}/reject     {reason} (required) PENDING → REJECTED
 POST /api/internal/prefixes/{id}/revoke     {reason} (required) APPROVED → REVOKED, primary cleared
@@ -407,6 +415,16 @@ Design decisions:
 - **Evidence is validated, not verified.** `registry` must be `IN-DLT`; `entity_id` numeric;
   `header` must equal the prefix case-insensitively; `entity_name` 2–255 chars. Nothing is
   checked against DLT (no public API) — the operator's review is the check.
+- **Screenshot storage**: MySQL, not object storage — one row per request in
+  `brand_prefix_screenshots` (`prefix_id` PK → `brand_prefixes.id` ON DELETE CASCADE,
+  `content_type`, `image` MEDIUMBLOB), so self-hosting needs no bucket. A separate table keeps
+  list queries off the bytes (they read an `EXISTS` flag); the cascade removes it on
+  withdraw, release, or a rejected row replaced by a new request. The type is sniffed
+  (`http.DetectContentType`) and limited to PNG/JPEG/WebP — the client's declared type is
+  ignored, so the admin route can only ever serve an image; ≤ 2 MB (the handler reads one byte
+  past the cap; the service rejects). Required even under auto-approval, as evidence for any
+  later revocation. Ingress must allow the body: ingress-nginx defaults to 1m, so the
+  manifests set `proxy-body-size: 3m`.
 - **State machine with conditional writes**: every transition is
   `UPDATE … WHERE id = ? AND status = ?`; zero rows affected is a 409 (stale or concurrent
   decision). Revoke clears `is_primary` in the same statement. Primary swap mirrors the
@@ -428,9 +446,11 @@ Design decisions:
   config, config-gated no-op when unset) to email the org's OWNERs on approve/reject/revoke.
 - **Migration**: one new timestamped file — `CREATE TABLE IF NOT EXISTS brand_prefixes` plus
   the two `clicks` columns as per-column guarded ALTERs (the `link_gating` pattern) — and the
-  same DDL folded into the initial schema for fresh installs.
-- **No admin UI yet**: the review queue is driven by curl or an operations console against
-  `/api/internal/prefixes` (FEATURES.md §12).
+  same DDL folded into the initial schema for fresh installs. The screenshots table followed
+  as its own file (`20261022144412_brand_prefix_screenshots`), also folded in.
+- **No admin UI in this repo**: the review queue is driven by curl or an operations console
+  against `/api/internal/prefixes` (FEATURES.md §12) — the opengittr console's ogtr →
+  Prefixes page is one such console.
 
 ### API keys
 

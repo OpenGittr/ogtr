@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"io"
+	"mime/multipart"
+
 	"gofr.dev/pkg/gofr"
 	gofrHTTP "gofr.dev/pkg/gofr/http"
 
@@ -20,17 +23,25 @@ func NewBrandPrefixHandler(prefixes BrandPrefixService) *BrandPrefixHandler {
 	return &BrandPrefixHandler{prefixes: prefixes}
 }
 
-// Create handles POST /api/v1/org/prefixes {prefix, registry, entity_id,
-// header, entity_name}: files the request as PENDING (APPROVED under
-// auto-approval). Invalid input and reserved prefixes are 422; a prefix held
-// by any org, or equal to an existing short code, is 409.
+// brandPrefixRequest is the multipart/form-data body of POST
+// /api/v1/org/prefixes: the input fields plus the "screenshot" file.
+type brandPrefixRequest struct {
+	services.BrandPrefixInput
+	Screenshot *multipart.FileHeader `file:"screenshot" json:"-"`
+}
+
+// Create handles POST /api/v1/org/prefixes — multipart/form-data {prefix,
+// registry, entity_id, header, entity_name, screenshot}: files the request as
+// PENDING (APPROVED under auto-approval). Invalid input, a missing or
+// unacceptable screenshot, and reserved prefixes are 422; a prefix held by any
+// org, or equal to an existing short code, is 409.
 func (h *BrandPrefixHandler) Create(ctx *gofr.Context) (any, error) {
 	claims, err := orgClaims(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var req services.BrandPrefixInput
+	var req brandPrefixRequest
 	if err := ctx.Bind(&req); err != nil {
 		return nil, gofrHTTP.ErrorInvalidParam{Params: []string{"body"}}
 	}
@@ -39,9 +50,18 @@ func (h *BrandPrefixHandler) Create(ctx *gofr.Context) (any, error) {
 		return nil, gofrHTTP.ErrorMissingParam{Params: []string{"prefix"}}
 	}
 
+	if req.Screenshot != nil {
+		image, err := readScreenshot(req.Screenshot)
+		if err != nil {
+			return nil, gofrHTTP.ErrorInvalidParam{Params: []string{"screenshot"}}
+		}
+
+		req.BrandPrefixInput.Screenshot = image
+	}
+
 	// Untyped nil on error — a typed nil pointer in the any return makes
 	// gofr respond 206.
-	p, err := h.prefixes.Create(ctx, claims.OrgID, claims.UserID, req)
+	p, err := h.prefixes.Create(ctx, claims.OrgID, claims.UserID, req.BrandPrefixInput)
 	if err != nil {
 		return nil, err
 	}
@@ -104,4 +124,17 @@ func (h *BrandPrefixHandler) Delete(ctx *gofr.Context) (any, error) {
 	}
 
 	return map[string]bool{"deleted": true}, nil
+}
+
+// readScreenshot reads at most one byte past services.MaxScreenshotBytes, so
+// the service can reject an oversized file without the handler holding it
+// all.
+func readScreenshot(fh *multipart.FileHeader) ([]byte, error) {
+	f, err := fh.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	return io.ReadAll(io.LimitReader(f, services.MaxScreenshotBytes+1))
 }

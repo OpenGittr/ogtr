@@ -66,6 +66,22 @@ func (s *AdminService) RevokePrefix(ctx *gofr.Context, id int64, reason string) 
 	return s.decidePrefix(ctx, id, models.BrandPrefixStatusApproved, models.BrandPrefixStatusRevoked, reason)
 }
 
+// PrefixScreenshot returns the DLT-portal screenshot filed with a prefix
+// request; 404 when the prefix or its screenshot is absent (requests filed
+// before screenshots were required have none).
+func (s *AdminService) PrefixScreenshot(ctx *gofr.Context, id int64) (*models.BrandPrefixScreenshot, error) {
+	shot, err := s.store.PrefixScreenshot(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if shot == nil {
+		return nil, apierrors.NotFound("no screenshot for this prefix")
+	}
+
+	return shot, nil
+}
+
 // ReleasePrefix deletes a REVOKED prefix so its value is claimable again.
 func (s *AdminService) ReleasePrefix(ctx *gofr.Context, id int64) error {
 	p, err := s.getPrefix(ctx, id)

@@ -24,8 +24,8 @@ const (
 
 func prefixRows(id int64, prefix, status string) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{"id", "org_id", "prefix", "status", "is_primary", "registry", "entity_id",
-		"header", "entity_name", "decision_reason", "decided_at", "created_at"}).
-		AddRow(id, 3, prefix, status, false, "IN-DLT", "1101234567890123456", prefix, "Acme", nil, nil, time.Now())
+		"header", "entity_name", "decision_reason", "decided_at", "created_at", "has_screenshot"}).
+		AddRow(id, 3, prefix, status, false, "IN-DLT", "1101234567890123456", prefix, "Acme", nil, nil, time.Now(), true)
 }
 
 func TestBrandPrefixStore_Create(t *testing.T) {
@@ -33,8 +33,9 @@ func TestBrandPrefixStore_Create(t *testing.T) {
 		OrgID: 3, Prefix: "ACMEIN", Status: "PENDING", Registry: "IN-DLT",
 		EntityID: "1101234567890123456", Header: "ACMEIN", EntityName: "Acme",
 	}
+	shot := &models.BrandPrefixScreenshot{ContentType: "image/png", Image: []byte("png")}
 
-	t.Run("rejected row cleared and request inserted in one transaction", func(t *testing.T) {
+	t.Run("rejected row cleared, request and screenshot inserted in one transaction", func(t *testing.T) {
 		ctx, mocks := newTestCtx(t)
 		mocks.SQL.ExpectBegin()
 		mocks.SQL.ExpectExec(deleteRejectedPrefix).WithArgs("ACMEIN", "REJECTED").
@@ -42,14 +43,31 @@ func TestBrandPrefixStore_Create(t *testing.T) {
 		mocks.SQL.ExpectExec(insertBrandPrefix).
 			WithArgs(int64(3), "ACMEIN", "PENDING", "IN-DLT", "1101234567890123456", "ACMEIN", "Acme", "PENDING").
 			WillReturnResult(sqlmock.NewResult(5, 1))
+		mocks.SQL.ExpectExec(insertBrandPrefixScreenshot).WithArgs(int64(5), "image/png", []byte("png")).
+			WillReturnResult(sqlmock.NewResult(0, 1))
 		mocks.SQL.ExpectCommit()
 		mocks.SQL.ExpectQuery(selectPrefixByID).WithArgs(int64(5), int64(3)).
 			WillReturnRows(prefixRows(5, "ACMEIN", "PENDING"))
 
-		got, err := NewBrandPrefixStore().Create(ctx, in)
+		got, err := NewBrandPrefixStore().Create(ctx, in, shot)
 
 		require.NoError(t, err)
 		assert.Equal(t, int64(5), got.ID)
+		assert.True(t, got.HasScreenshot)
+	})
+
+	t.Run("screenshot insert error rolls back the request", func(t *testing.T) {
+		ctx, mocks := newTestCtx(t)
+		mocks.SQL.ExpectBegin()
+		mocks.SQL.ExpectExec(deleteRejectedPrefix).WithArgs("ACMEIN", "REJECTED").
+			WillReturnResult(sqlmock.NewResult(0, 0))
+		mocks.SQL.ExpectExec(insertBrandPrefix).WillReturnResult(sqlmock.NewResult(5, 1))
+		mocks.SQL.ExpectExec(insertBrandPrefixScreenshot).WillReturnError(errDB)
+		mocks.SQL.ExpectRollback()
+
+		_, err := NewBrandPrefixStore().Create(ctx, in, shot)
+
+		require.Error(t, err)
 	})
 
 	t.Run("insert error rolls back", func(t *testing.T) {
@@ -60,7 +78,7 @@ func TestBrandPrefixStore_Create(t *testing.T) {
 		mocks.SQL.ExpectExec(insertBrandPrefix).WillReturnError(errDB)
 		mocks.SQL.ExpectRollback()
 
-		_, err := NewBrandPrefixStore().Create(ctx, in)
+		_, err := NewBrandPrefixStore().Create(ctx, in, shot)
 
 		require.Error(t, err)
 	})
@@ -179,8 +197,8 @@ func TestAdminStore_PrefixDecisions(t *testing.T) {
 func TestAdminStore_ListPrefixes(t *testing.T) {
 	ctx, mocks := newTestCtx(t)
 	rows := sqlmock.NewRows([]string{"id", "org_id", "prefix", "status", "is_primary", "registry", "entity_id",
-		"header", "entity_name", "decision_reason", "decided_at", "created_at", "name"}).
-		AddRow(5, 3, "ACMEIN", "PENDING", false, "IN-DLT", "1101", "ACMEIN", "Acme Pvt", nil, nil, time.Now(), "Acme")
+		"header", "entity_name", "decision_reason", "decided_at", "created_at", "has_screenshot", "name"}).
+		AddRow(5, 3, "ACMEIN", "PENDING", false, "IN-DLT", "1101", "ACMEIN", "Acme Pvt", nil, nil, time.Now(), true, "Acme")
 	mocks.SQL.ExpectQuery(listPrefixesQuery).WithArgs("PENDING", 25, 0).WillReturnRows(rows)
 
 	got, err := NewAdminStore().ListPrefixes(ctx, "PENDING", 25, 0)
@@ -188,4 +206,20 @@ func TestAdminStore_ListPrefixes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Equal(t, "ACMEIN", got[0].Prefix)
+}
+
+func TestAdminStore_PrefixScreenshot(t *testing.T) {
+	ctx, mocks := newTestCtx(t)
+	mocks.SQL.ExpectQuery(prefixScreenshotQuery).WithArgs(int64(5)).
+		WillReturnRows(sqlmock.NewRows([]string{"content_type", "image"}).AddRow("image/png", []byte("png")))
+	mocks.SQL.ExpectQuery(prefixScreenshotQuery).WithArgs(int64(6)).
+		WillReturnRows(sqlmock.NewRows(nil))
+
+	got, err := NewAdminStore().PrefixScreenshot(ctx, 5)
+	require.NoError(t, err)
+	assert.Equal(t, &models.BrandPrefixScreenshot{ContentType: "image/png", Image: []byte("png")}, got)
+
+	missing, err := NewAdminStore().PrefixScreenshot(ctx, 6)
+	require.NoError(t, err)
+	assert.Nil(t, missing)
 }

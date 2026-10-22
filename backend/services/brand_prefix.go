@@ -1,6 +1,7 @@
 package services
 
 import (
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -18,7 +19,15 @@ const (
 
 	minEntityNameLength = 2
 	maxEntityNameLength = 255
+
+	// MaxScreenshotBytes caps the DLT-portal screenshot (2 MB — a phone or
+	// desktop screenshot fits; the column is a MEDIUMBLOB).
+	MaxScreenshotBytes = 2 << 20
 )
+
+// screenshotTypes are the image types accepted for the DLT-portal
+// screenshot, as sniffed by http.DetectContentType.
+var screenshotTypes = map[string]bool{"image/png": true, "image/jpeg": true, "image/webp": true}
 
 var (
 	// prefixRe is the brand-prefix format (FEATURES.md §1.7): DLT headers are
@@ -30,13 +39,16 @@ var (
 )
 
 // BrandPrefixInput is the POST /api/v1/org/prefixes payload: the prefix plus
-// the sender evidence the operator reviews.
+// the sender evidence the operator reviews — including a screenshot of the
+// header on the requester's DLT portal (multipart file "screenshot", read by
+// the handler).
 type BrandPrefixInput struct {
-	Prefix     string `json:"prefix"`
-	Registry   string `json:"registry"`
-	EntityID   string `json:"entity_id"`
-	Header     string `json:"header"`
-	EntityName string `json:"entity_name"`
+	Prefix     string `json:"prefix" form:"prefix"`
+	Registry   string `json:"registry" form:"registry"`
+	EntityID   string `json:"entity_id" form:"entity_id"`
+	Header     string `json:"header" form:"header"`
+	EntityName string `json:"entity_name" form:"entity_name"`
+	Screenshot []byte `json:"-" form:"-"`
 }
 
 // BrandPrefixService implements per-org brand prefixes (FEATURES.md §1.7):
@@ -70,13 +82,20 @@ func NewBrandPrefixService(prefixes BrandPrefixStore, links LinkStore, members M
 // Create files a prefix request (OWNER only): PENDING for operator review, or
 // APPROVED straight away under auto-approval. The prefix must equal the DLT
 // header, pass the full reserved set and the explicit-word filter, and not
-// equal any existing short code; a value held by any org is a 409.
+// equal any existing short code; a value held by any org is a 409. A
+// DLT-portal screenshot is required (kept as evidence even under
+// auto-approval, for any later revocation).
 func (s *BrandPrefixService) Create(ctx *gofr.Context, orgID, actorID int64, in BrandPrefixInput) (*models.BrandPrefix, error) {
 	if err := s.requireOwner(ctx, orgID, actorID); err != nil {
 		return nil, err
 	}
 
 	p, err := validatePrefixInput(in)
+	if err != nil {
+		return nil, err
+	}
+
+	shot, err := validateScreenshot(in.Screenshot)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +143,7 @@ func (s *BrandPrefixService) Create(ctx *gofr.Context, orgID, actorID int64, in 
 		p.Status = models.BrandPrefixStatusApproved
 	}
 
-	created, err := s.prefixes.Create(ctx, p)
+	created, err := s.prefixes.Create(ctx, p, shot)
 	if err != nil {
 		return nil, err
 	}
@@ -259,4 +278,24 @@ func validatePrefixInput(in BrandPrefixInput) (*models.BrandPrefix, error) {
 	}
 
 	return p, nil
+}
+
+// validateScreenshot checks the DLT-portal screenshot: present, at most
+// MaxScreenshotBytes, and a PNG, JPEG or WebP by its content (the client's
+// declared type is ignored).
+func validateScreenshot(image []byte) (*models.BrandPrefixScreenshot, error) {
+	if len(image) == 0 {
+		return nil, apierrors.Unprocessable("attach a screenshot of this header on your DLT portal")
+	}
+
+	if len(image) > MaxScreenshotBytes {
+		return nil, apierrors.Unprocessable("screenshot must be at most 2 MB")
+	}
+
+	contentType := http.DetectContentType(image)
+	if !screenshotTypes[contentType] {
+		return nil, apierrors.Unprocessable("screenshot must be a PNG, JPEG or WebP image")
+	}
+
+	return &models.BrandPrefixScreenshot{ContentType: contentType, Image: image}, nil
 }

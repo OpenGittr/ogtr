@@ -254,6 +254,17 @@ type BrandPrefix struct {
 	DecisionReason *string    `json:"decision_reason"`
 	DecidedAt      *time.Time `json:"decided_at"`
 	CreatedAt      time.Time  `json:"created_at"`
+	// HasScreenshot reports whether a DLT-portal screenshot is on file
+	// (brand_prefix_screenshots); the image itself is served only to the
+	// operator.
+	HasScreenshot bool `json:"has_screenshot"`
+}
+
+// BrandPrefixScreenshot is the DLT-portal screenshot filed with a prefix
+// request. ContentType is sniffed from the bytes, never taken from the client.
+type BrandPrefixScreenshot struct {
+	ContentType string
+	Image       []byte
 }
 
 // Click entry points: how a resolution reached the link (recorded per click).

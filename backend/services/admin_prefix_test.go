@@ -131,3 +131,17 @@ func TestAdminService_ReleasePrefix(t *testing.T) {
 		assertStatus(t, svc.ReleasePrefix(ctx, 5), http.StatusConflict)
 	})
 }
+
+func TestAdminService_PrefixScreenshot(t *testing.T) {
+	svc, store, _, ctx := newAdminService(t)
+	shot := &models.BrandPrefixScreenshot{ContentType: "image/png", Image: []byte("png")}
+	store.EXPECT().PrefixScreenshot(gomock.Any(), int64(5)).Return(shot, nil)
+	store.EXPECT().PrefixScreenshot(gomock.Any(), int64(6)).Return(nil, nil)
+
+	got, err := svc.PrefixScreenshot(ctx, 5)
+	require.NoError(t, err)
+	assert.Equal(t, shot, got)
+
+	_, err = svc.PrefixScreenshot(ctx, 6)
+	assertStatus(t, err, http.StatusNotFound)
+}

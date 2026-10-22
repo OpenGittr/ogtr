@@ -1111,18 +1111,18 @@ func (mr *MockBrandPrefixStoreMockRecorder) CountHeldByOrg(ctx, orgID any) *gomo
 }
 
 // Create mocks base method.
-func (m *MockBrandPrefixStore) Create(ctx *gofr.Context, p *models.BrandPrefix) (*models.BrandPrefix, error) {
+func (m *MockBrandPrefixStore) Create(ctx *gofr.Context, p *models.BrandPrefix, shot *models.BrandPrefixScreenshot) (*models.BrandPrefix, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, p)
+	ret := m.ctrl.Call(m, "Create", ctx, p, shot)
 	ret0, _ := ret[0].(*models.BrandPrefix)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockBrandPrefixStoreMockRecorder) Create(ctx, p any) *gomock.Call {
+func (mr *MockBrandPrefixStoreMockRecorder) Create(ctx, p, shot any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockBrandPrefixStore)(nil).Create), ctx, p)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockBrandPrefixStore)(nil).Create), ctx, p, shot)
 }
 
 // Delete mocks base method.
@@ -2007,6 +2007,21 @@ func (m *MockAdminStore) OrgUsers(ctx *gofr.Context, orgID int64) ([]models.Admi
 func (mr *MockAdminStoreMockRecorder) OrgUsers(ctx, orgID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OrgUsers", reflect.TypeOf((*MockAdminStore)(nil).OrgUsers), ctx, orgID)
+}
+
+// PrefixScreenshot mocks base method.
+func (m *MockAdminStore) PrefixScreenshot(ctx *gofr.Context, id int64) (*models.BrandPrefixScreenshot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrefixScreenshot", ctx, id)
+	ret0, _ := ret[0].(*models.BrandPrefixScreenshot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PrefixScreenshot indicates an expected call of PrefixScreenshot.
+func (mr *MockAdminStoreMockRecorder) PrefixScreenshot(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrefixScreenshot", reflect.TypeOf((*MockAdminStore)(nil).PrefixScreenshot), ctx, id)
 }
 
 // ReleasePrefix mocks base method.

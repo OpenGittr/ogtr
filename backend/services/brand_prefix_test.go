@@ -40,9 +40,13 @@ func stubPrefixOwner(m prefixMocks) {
 	m.members.EXPECT().GetRole(gomock.Any(), int64(3), int64(7)).Return(models.RoleOwner, nil)
 }
 
+// pngBytes is the PNG signature plus padding — enough for content sniffing.
+var pngBytes = append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 64)...)
+
 func validPrefixInput() BrandPrefixInput {
 	return BrandPrefixInput{
 		Prefix: "ACMEIN", EntityID: "1101234567890123456", Header: "acmein", EntityName: "Acme India Pvt Ltd",
+		Screenshot: pngBytes,
 	}
 }
 
@@ -60,6 +64,11 @@ func TestBrandPrefixService_CreateValidation(t *testing.T) {
 		{"entity name too short", func(in *BrandPrefixInput) { in.EntityName = "A" }},
 		{"reserved word", func(in *BrandPrefixInput) { in.Prefix, in.Header = "login", "login" }},
 		{"functional word", func(in *BrandPrefixInput) { in.Prefix, in.Header = "api", "api" }},
+		{"no screenshot", func(in *BrandPrefixInput) { in.Screenshot = nil }},
+		{"screenshot not an image", func(in *BrandPrefixInput) { in.Screenshot = []byte("<html><script>") }},
+		{"screenshot too large", func(in *BrandPrefixInput) {
+			in.Screenshot = append(append([]byte{}, pngBytes...), make([]byte, MaxScreenshotBytes)...)
+		}},
 	}
 
 	for _, tc := range tests {
@@ -86,7 +95,7 @@ func TestBrandPrefixService_CreatePending(t *testing.T) {
 	m.prefixes.EXPECT().Create(gomock.Any(), &models.BrandPrefix{
 		OrgID: 3, Prefix: "ACMEIN", Status: models.BrandPrefixStatusPending, Registry: "IN-DLT",
 		EntityID: "1101234567890123456", Header: "acmein", EntityName: "Acme India Pvt Ltd",
-	}).Return(brandPrefix(5, 3, "ACMEIN", models.BrandPrefixStatusPending), nil)
+	}, &models.BrandPrefixScreenshot{ContentType: "image/png", Image: pngBytes}).Return(brandPrefix(5, 3, "ACMEIN", models.BrandPrefixStatusPending), nil)
 
 	got, err := svc.Create(ctx, 3, 7, validPrefixInput())
 
@@ -100,8 +109,8 @@ func TestBrandPrefixService_CreateAutoApproved(t *testing.T) {
 	m.prefixes.EXPECT().CountHeldByOrg(gomock.Any(), int64(3)).Return(0, nil)
 	m.prefixes.EXPECT().GetByPrefix(gomock.Any(), "ACMEIN").Return(nil, nil)
 	m.links.EXPECT().CodeExists(gomock.Any(), "ACMEIN").Return(false, nil)
-	m.prefixes.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(_ *gofr.Context, p *models.BrandPrefix) (*models.BrandPrefix, error) {
+	m.prefixes.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ *gofr.Context, p *models.BrandPrefix, _ *models.BrandPrefixScreenshot) (*models.BrandPrefix, error) {
 			assert.Equal(t, models.BrandPrefixStatusApproved, p.Status)
 
 			return brandPrefix(5, 3, p.Prefix, p.Status), nil
@@ -165,7 +174,7 @@ func TestBrandPrefixService_RejectedValueIsClaimable(t *testing.T) {
 	m.prefixes.EXPECT().GetByPrefix(gomock.Any(), "ACMEIN").
 		Return(brandPrefix(9, 99, "ACMEIN", models.BrandPrefixStatusRejected), nil)
 	m.links.EXPECT().CodeExists(gomock.Any(), "ACMEIN").Return(false, nil)
-	m.prefixes.EXPECT().Create(gomock.Any(), gomock.Any()).
+	m.prefixes.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(brandPrefix(10, 3, "ACMEIN", models.BrandPrefixStatusPending), nil)
 
 	_, err := svc.Create(ctx, 3, 7, validPrefixInput())

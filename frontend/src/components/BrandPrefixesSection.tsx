@@ -1,11 +1,12 @@
 // Brand prefixes: short links under <short-domain>/<prefix>/<code>, for
 // senders (Indian DLT SMS) who must whitelist a URL prefix they exclusively
 // control. The OWNER requests a prefix equal to their DLT header with the
-// entity details; the operator reviews it, and once APPROVED the org's links
+// entity details and a screenshot of that header on their DLT portal; the
+// operator reviews it, and once APPROVED the org's links
 // resolve under it and can display under it (Set primary). Members see a
 // read-only list.
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import { ApiError, endpoints, shortHost } from "../lib/api";
 import type { BrandPrefix } from "../lib/types";
@@ -39,6 +40,11 @@ function StatusBadge({ status }: { status: BrandPrefix["status"] }) {
   );
 }
 
+// Mirrors the backend's screenshot rules (services.MaxScreenshotBytes and the
+// sniffed PNG/JPEG/WebP set) so a bad file is caught before upload.
+const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
+const SCREENSHOT_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
 const inputClass =
   "w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30";
 
@@ -69,13 +75,37 @@ export default function BrandPrefixesSection({ isOwner }: { isOwner: boolean }) 
   const [header, setHeader] = useState("");
   const [entityId, setEntityId] = useState("");
   const [entityName, setEntityName] = useState("");
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const screenshotInput = useRef<HTMLInputElement>(null);
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState("");
   const [addNotice, setAddNotice] = useState("");
 
+  const pickScreenshot = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+
+    setAddError("");
+
+    if (file && !SCREENSHOT_TYPES.includes(file.type)) {
+      setAddError("The screenshot must be a PNG, JPEG or WebP image.");
+      event.target.value = "";
+      setScreenshot(null);
+      return;
+    }
+
+    if (file && file.size > MAX_SCREENSHOT_BYTES) {
+      setAddError("The screenshot must be at most 2 MB.");
+      event.target.value = "";
+      setScreenshot(null);
+      return;
+    }
+
+    setScreenshot(file);
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (addBusy) return;
+    if (addBusy || !screenshot) return;
 
     const trimmed = header.trim();
 
@@ -85,21 +115,26 @@ export default function BrandPrefixesSection({ isOwner }: { isOwner: boolean }) 
 
     try {
       // The prefix IS the DLT header — one field, sent as both.
-      const created = await endpoints.createPrefix({
-        prefix: trimmed,
-        header: trimmed,
-        entity_id: entityId.trim(),
-        entity_name: entityName.trim(),
-      });
+      const created = await endpoints.createPrefix(
+        {
+          prefix: trimmed,
+          header: trimmed,
+          entity_id: entityId.trim(),
+          entity_name: entityName.trim(),
+        },
+        screenshot,
+      );
 
       setPrefixes((prev) => [...prev, created]);
       setHeader("");
       setEntityId("");
       setEntityName("");
+      setScreenshot(null);
+      if (screenshotInput.current) screenshotInput.current.value = "";
       setAddNotice(
         created.status === "APPROVED"
           ? `${created.prefix} is approved — your links now also work at ${host}/${created.prefix}/…`
-          : `${created.prefix} submitted for review. We may email you for a screenshot of the header on your DLT portal.`,
+          : `${created.prefix} submitted for review. We’ll email the owners once it’s decided.`,
       );
     } catch (err: unknown) {
       setAddError(friendlyError(err, "Could not submit the prefix."));
@@ -217,6 +252,25 @@ export default function BrandPrefixesSection({ isOwner }: { isOwner: boolean }) 
                   className={`mt-1 ${inputClass}`}
                 />
               </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="prefix-screenshot" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                  Screenshot from your DLT portal
+                </label>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  The page listing this header under your entity. PNG, JPEG or WebP, up to 2 MB — only our
+                  reviewers see it.
+                </p>
+                <input
+                  id="prefix-screenshot"
+                  ref={screenshotInput}
+                  type="file"
+                  accept={SCREENSHOT_TYPES.join(",")}
+                  onChange={pickScreenshot}
+                  required
+                  data-testid="prefix-screenshot"
+                  className="mt-1.5 block w-full text-sm text-slate-600 dark:text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 dark:file:bg-indigo-500/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-500/20"
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -225,7 +279,13 @@ export default function BrandPrefixesSection({ isOwner }: { isOwner: boolean }) 
               </p>
               <button
                 type="submit"
-                disabled={addBusy || header.trim().length < 3 || entityId === "" || entityName.trim().length < 2}
+                disabled={
+                  addBusy ||
+                  header.trim().length < 3 ||
+                  entityId === "" ||
+                  entityName.trim().length < 2 ||
+                  screenshot === null
+                }
                 className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {addBusy && <Spinner className="h-4 w-4 text-white" />}

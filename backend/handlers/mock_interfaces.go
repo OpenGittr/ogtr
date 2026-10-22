@@ -789,6 +789,21 @@ func (mr *MockAdminServiceMockRecorder) Orgs(ctx, query, page any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Orgs", reflect.TypeOf((*MockAdminService)(nil).Orgs), ctx, query, page)
 }
 
+// PrefixScreenshot mocks base method.
+func (m *MockAdminService) PrefixScreenshot(ctx *gofr.Context, id int64) (*models.BrandPrefixScreenshot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PrefixScreenshot", ctx, id)
+	ret0, _ := ret[0].(*models.BrandPrefixScreenshot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PrefixScreenshot indicates an expected call of PrefixScreenshot.
+func (mr *MockAdminServiceMockRecorder) PrefixScreenshot(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrefixScreenshot", reflect.TypeOf((*MockAdminService)(nil).PrefixScreenshot), ctx, id)
+}
+
 // Prefixes mocks base method.
 func (m *MockAdminService) Prefixes(ctx *gofr.Context, status string, page int) (*services.AdminPrefixesPage, error) {
 	m.ctrl.T.Helper()

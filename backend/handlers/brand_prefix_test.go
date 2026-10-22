@@ -1,14 +1,23 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"gofr.dev/pkg/gofr"
+	"gofr.dev/pkg/gofr/container"
+	gofrHTTP "gofr.dev/pkg/gofr/http"
+	"gofr.dev/pkg/gofr/http/response"
 
 	"github.com/opengittr/ogtr/backend/apierrors"
+	"github.com/opengittr/ogtr/backend/auth"
 	"github.com/opengittr/ogtr/backend/models"
 	"github.com/opengittr/ogtr/backend/services"
 )
@@ -82,6 +91,105 @@ func TestBrandPrefixHandler_Create(t *testing.T) {
 			assert.Equal(t, created, got)
 		})
 	}
+}
+
+// newMultipartCtx builds an owner's multipart/form-data request carrying the
+// given fields and, when non-nil, a "screenshot" file.
+func newMultipartCtx(t *testing.T, fields map[string]string, screenshot []byte) *gofr.Context {
+	t.Helper()
+
+	var body bytes.Buffer
+
+	w := multipart.NewWriter(&body)
+	for k, v := range fields {
+		require.NoError(t, w.WriteField(k, v))
+	}
+
+	if screenshot != nil {
+		fw, err := w.CreateFormFile("screenshot", "dlt.png")
+		require.NoError(t, err)
+
+		_, err = fw.Write(screenshot)
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, w.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/org/prefixes", &body)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	req = req.WithContext(auth.ContextWithClaims(context.Background(), orgOwnerClaims()))
+
+	mockContainer, _ := container.NewMockContainer(t)
+
+	return &gofr.Context{Context: req.Context(), Request: gofrHTTP.NewRequest(req), Container: mockContainer}
+}
+
+func TestBrandPrefixHandler_CreateMultipart(t *testing.T) {
+	created := &models.BrandPrefix{ID: 5, OrgID: 3, Prefix: "ACMEIN", Status: models.BrandPrefixStatusPending}
+	fields := map[string]string{"prefix": "ACMEIN", "entity_id": "1101", "header": "ACMEIN", "entity_name": "Acme"}
+
+	t.Run("fields and screenshot reach the service", func(t *testing.T) {
+		h, svc := newBrandPrefixHandler(t)
+		svc.EXPECT().Create(gomock.Any(), int64(3), int64(7), services.BrandPrefixInput{
+			Prefix: "ACMEIN", EntityID: "1101", Header: "ACMEIN", EntityName: "Acme", Screenshot: []byte("png-bytes"),
+		}).Return(created, nil)
+
+		got, err := h.Create(newMultipartCtx(t, fields, []byte("png-bytes")))
+
+		require.NoError(t, err)
+		assert.Equal(t, created, got)
+	})
+
+	t.Run("oversized screenshot is cut one byte past the cap", func(t *testing.T) {
+		h, svc := newBrandPrefixHandler(t)
+		svc.EXPECT().Create(gomock.Any(), int64(3), int64(7), gomock.Any()).DoAndReturn(
+			func(_ *gofr.Context, _, _ int64, in services.BrandPrefixInput) (*models.BrandPrefix, error) {
+				assert.Len(t, in.Screenshot, services.MaxScreenshotBytes+1)
+
+				return nil, apierrors.Unprocessable("screenshot must be at most 2 MB")
+			})
+
+		_, err := h.Create(newMultipartCtx(t, fields, make([]byte, services.MaxScreenshotBytes+100)))
+
+		require.Error(t, err)
+	})
+
+	t.Run("no screenshot leaves it empty for the service to reject", func(t *testing.T) {
+		h, svc := newBrandPrefixHandler(t)
+		svc.EXPECT().Create(gomock.Any(), int64(3), int64(7), services.BrandPrefixInput{
+			Prefix: "ACMEIN", EntityID: "1101", Header: "ACMEIN", EntityName: "Acme",
+		}).Return(nil, apierrors.Unprocessable("attach a screenshot of this header on your DLT portal"))
+
+		_, err := h.Create(newMultipartCtx(t, fields, nil))
+
+		require.Error(t, err)
+	})
+}
+
+func TestAdminHandler_PrefixScreenshot(t *testing.T) {
+	vars := map[string]string{"id": "5"}
+
+	t.Run("served as the image itself", func(t *testing.T) {
+		h, admin := newAdminHandler(t)
+		admin.EXPECT().PrefixScreenshot(gomock.Any(), int64(5)).
+			Return(&models.BrandPrefixScreenshot{ContentType: "image/png", Image: []byte("png")}, nil)
+
+		got, err := h.PrefixScreenshot(newTestCtx(t, http.MethodGet, "/api/internal/prefixes/5/screenshot", "", nil, vars))
+
+		require.NoError(t, err)
+		assert.Equal(t, response.File{Content: []byte("png"), ContentType: "image/png"}, got)
+	})
+
+	t.Run("missing screenshot surfaces the 404", func(t *testing.T) {
+		h, admin := newAdminHandler(t)
+		admin.EXPECT().PrefixScreenshot(gomock.Any(), int64(5)).
+			Return(nil, apierrors.NotFound("no screenshot for this prefix"))
+
+		got, err := h.PrefixScreenshot(newTestCtx(t, http.MethodGet, "/api/internal/prefixes/5/screenshot", "", nil, vars))
+
+		require.Error(t, err)
+		assert.Nil(t, got)
+	})
 }
 
 func TestBrandPrefixHandler_ListPrimaryDelete(t *testing.T) {

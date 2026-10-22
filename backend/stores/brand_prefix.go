@@ -22,7 +22,8 @@ type BrandPrefixStore struct{}
 func NewBrandPrefixStore() *BrandPrefixStore { return &BrandPrefixStore{} }
 
 const brandPrefixColumns = "id, org_id, prefix, status, is_primary, registry, entity_id, header, " +
-	"entity_name, decision_reason, decided_at, created_at"
+	"entity_name, decision_reason, decided_at, created_at, " +
+	"EXISTS(SELECT 1 FROM brand_prefix_screenshots s WHERE s.prefix_id = brand_prefixes.id)"
 
 const (
 	deleteRejectedPrefix = "DELETE FROM brand_prefixes WHERE prefix = ? AND status = ?"
@@ -30,13 +31,18 @@ const (
 	insertBrandPrefix = "INSERT INTO brand_prefixes (org_id, prefix, status, registry, entity_id, header, " +
 		"entity_name, decided_at) VALUES (?, ?, ?, ?, ?, ?, ?, " +
 		"IF(? = 'APPROVED', CURRENT_TIMESTAMP, NULL))"
+
+	insertBrandPrefixScreenshot = "INSERT INTO brand_prefix_screenshots (prefix_id, content_type, image) " +
+		"VALUES (?, ?, ?)"
 )
 
 // Create inserts a request with the given status (PENDING, or APPROVED under
-// auto-approval — decided_at is stamped then) and returns the stored row. A
-// REJECTED row holding the same prefix (any org) is removed in the same
-// transaction: rejection never holds a value.
-func (s *BrandPrefixStore) Create(ctx *gofr.Context, p *models.BrandPrefix) (*models.BrandPrefix, error) {
+// auto-approval — decided_at is stamped then) and its DLT-portal screenshot,
+// and returns the stored row. A REJECTED row holding the same prefix (any
+// org) is removed in the same transaction (its screenshot cascades):
+// rejection never holds a value.
+func (s *BrandPrefixStore) Create(ctx *gofr.Context, p *models.BrandPrefix,
+	shot *models.BrandPrefixScreenshot) (*models.BrandPrefix, error) {
 	tx, err := ctx.SQL.Begin()
 	if err != nil {
 		return nil, err
@@ -56,6 +62,10 @@ func (s *BrandPrefixStore) Create(ctx *gofr.Context, p *models.BrandPrefix) (*mo
 
 	id, err := res.LastInsertId()
 	if err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.ExecContext(ctx, insertBrandPrefixScreenshot, id, shot.ContentType, shot.Image); err != nil {
 		return nil, err
 	}
 
@@ -216,7 +226,7 @@ func scanBrandPrefixRow(row rowScanner) (*models.BrandPrefix, error) {
 	var p models.BrandPrefix
 
 	err := row.Scan(&p.ID, &p.OrgID, &p.Prefix, &p.Status, &p.IsPrimary, &p.Registry, &p.EntityID,
-		&p.Header, &p.EntityName, &p.DecisionReason, &p.DecidedAt, &p.CreatedAt)
+		&p.Header, &p.EntityName, &p.DecisionReason, &p.DecidedAt, &p.CreatedAt, &p.HasScreenshot)
 	if err != nil {
 		return nil, err
 	}

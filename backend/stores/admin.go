@@ -361,7 +361,8 @@ func (*AdminStore) ClicksPerDay(ctx *gofr.Context, since string) ([]models.DayCo
 // decisions, across orgs. Listing is oldest first — a review queue.
 const (
 	adminPrefixColumns = "p.id, p.org_id, p.prefix, p.status, p.is_primary, p.registry, p.entity_id, " +
-		"p.header, p.entity_name, p.decision_reason, p.decided_at, p.created_at, o.name"
+		"p.header, p.entity_name, p.decision_reason, p.decided_at, p.created_at, " +
+		"EXISTS(SELECT 1 FROM brand_prefix_screenshots s WHERE s.prefix_id = p.id), o.name"
 
 	listPrefixesQuery = "SELECT " + adminPrefixColumns + " FROM brand_prefixes p " +
 		"INNER JOIN orgs o ON o.id = p.org_id WHERE p.status = ? ORDER BY p.id LIMIT ? OFFSET ?"
@@ -378,6 +379,8 @@ const (
 		"decided_at = CURRENT_TIMESTAMP, is_primary = 0 WHERE id = ? AND status = ?"
 
 	releasePrefixQuery = "DELETE FROM brand_prefixes WHERE id = ? AND status = ?"
+
+	prefixScreenshotQuery = "SELECT content_type, image FROM brand_prefix_screenshots WHERE prefix_id = ?"
 )
 
 // ListPrefixes returns one page of brand-prefix requests in the given
@@ -437,6 +440,23 @@ func (*AdminStore) DecidePrefix(ctx *gofr.Context, id int64, from, to string, re
 	return affected == 1, err
 }
 
+// PrefixScreenshot fetches a prefix's DLT-portal screenshot (any org);
+// (nil, nil) when none is on file.
+func (*AdminStore) PrefixScreenshot(ctx *gofr.Context, id int64) (*models.BrandPrefixScreenshot, error) {
+	var shot models.BrandPrefixScreenshot
+
+	err := ctx.SQL.QueryRowContext(ctx, prefixScreenshotQuery, id).Scan(&shot.ContentType, &shot.Image)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &shot, nil
+}
+
 // ReleasePrefix deletes a REVOKED prefix so its value is claimable again.
 // Reports whether a row was deleted.
 func (*AdminStore) ReleasePrefix(ctx *gofr.Context, id int64) (bool, error) {
@@ -454,7 +474,7 @@ func scanAdminPrefix(row rowScanner) (*models.AdminBrandPrefix, error) {
 	var p models.AdminBrandPrefix
 
 	err := row.Scan(&p.ID, &p.OrgID, &p.Prefix, &p.Status, &p.IsPrimary, &p.Registry, &p.EntityID,
-		&p.Header, &p.EntityName, &p.DecisionReason, &p.DecidedAt, &p.CreatedAt, &p.OrgName)
+		&p.Header, &p.EntityName, &p.DecisionReason, &p.DecidedAt, &p.CreatedAt, &p.HasScreenshot, &p.OrgName)
 	if err != nil {
 		return nil, err
 	}

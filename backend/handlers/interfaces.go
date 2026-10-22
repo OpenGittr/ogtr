@@ -98,6 +98,7 @@ type AdminService interface {
 	RejectPrefix(ctx *gofr.Context, id int64, reason string) (*models.AdminBrandPrefix, error)
 	RevokePrefix(ctx *gofr.Context, id int64, reason string) (*models.AdminBrandPrefix, error)
 	ReleasePrefix(ctx *gofr.Context, id int64) error
+	PrefixScreenshot(ctx *gofr.Context, id int64) (*models.BrandPrefixScreenshot, error)
 }
 
 // BrandPrefixService is the brand-prefix dependency of the handlers.
